@@ -1,0 +1,609 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>일차함수 마리오 퀴즈</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{width:100%;height:100%;overflow:hidden;background:#1a1a2e;user-select:none;font-family:'Apple SD Gothic Neo',sans-serif}
+canvas{display:block;outline:none}
+
+.screen{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;
+  justify-content:center;background:#1a1a2e;z-index:200;gap:14px}
+.px{font-family:'Press Start 2P',monospace}
+.title{font-size:20px;color:#FFD700;text-shadow:3px 3px #7d5a00;line-height:1.7;text-align:center}
+.sub{font-size:9px;color:#ccc;text-align:center;line-height:2.2}
+.px-btn{font-size:11px;padding:13px 26px;background:#E52521;color:#fff;border:none;
+  border-radius:4px;cursor:pointer;box-shadow:0 4px #8B1210;margin-top:6px;font-family:'Press Start 2P',monospace}
+.px-btn:active{transform:translateY(3px);box-shadow:0 1px #8B1210}
+.px-input{font-size:11px;padding:10px 14px;background:#000;color:#FFD700;
+  border:2px solid #FFD700;border-radius:4px;text-align:center;outline:none;
+  width:200px;font-family:'Press Start 2P',monospace}
+.px-input::placeholder{color:#444}
+
+#hud{position:fixed;top:0;left:0;right:0;height:46px;background:#111;
+  display:none;align-items:center;justify-content:space-around;z-index:100;
+  border-bottom:2px solid #333}
+.hi{display:flex;flex-direction:column;align-items:center;gap:2px}
+.hl{font-family:'Press Start 2P',monospace;font-size:7px;color:#888}
+.hv{font-family:'Press Start 2P',monospace;font-size:11px;color:#FFD700}
+
+#qOverlay{position:fixed;inset:0;background:rgba(0,0,0,0.93);z-index:150;
+  display:none;flex-direction:column;align-items:center;justify-content:center;gap:10px;padding:16px}
+.qtw{width:100%;max-width:520px;height:10px;background:#333;border-radius:5px;overflow:hidden}
+.qtb{height:100%;background:#FFD700;transition:width .08s linear}
+.qbox{background:#16213e;border:3px solid #FFD700;border-radius:12px;
+  padding:18px 22px;max-width:520px;width:100%;text-align:center}
+.qn{font-family:'Press Start 2P',monospace;font-size:8px;color:#888;margin-bottom:8px}
+.qt2{font-size:17px;font-weight:700;color:#fff;line-height:1.6;margin-bottom:4px}
+.qs{font-size:13px;color:#aaa}
+.cbtn{font-size:14px;font-weight:600;padding:12px 16px;background:#1a1a2e;color:#fff;
+  border:2px solid #534AB7;border-radius:10px;cursor:pointer;text-align:left;
+  width:100%;max-width:520px;font-family:inherit}
+.cbtn:hover{background:#534AB7}
+.cbtn.ok{background:#1D9E75!important;border-color:#9FE1CB!important}
+.cbtn.ng{background:#D85A30!important;border-color:#F0997B!important}
+.qfb{font-family:'Press Start 2P',monospace;font-size:9px;text-align:center;min-height:20px;color:#fff}
+
+.spop{position:fixed;pointer-events:none;z-index:180;
+  font-family:'Press Start 2P',monospace;font-size:11px;
+  animation:fup .85s ease-out forwards}
+@keyframes fup{0%{opacity:1;transform:translateY(0)}100%{opacity:0;transform:translateY(-55px)}}
+
+.mbtn{position:fixed;bottom:18px;z-index:120;width:62px;height:62px;
+  background:rgba(255,255,255,0.18);border-radius:50%;
+  border:2px solid rgba(255,255,255,0.35);
+  display:flex;align-items:center;justify-content:center;
+  font-size:22px;touch-action:none;-webkit-tap-highlight-color:transparent}
+.mbtn:active{background:rgba(255,255,255,0.35)}
+
+.cstat{background:#16213e;border:2px solid #FFD700;border-radius:10px;padding:14px 22px;min-width:270px}
+.crow{font-family:'Press Start 2P',monospace;font-size:8px;color:#ccc;
+  padding:6px 0;display:flex;justify-content:space-between;gap:16px;
+  border-bottom:1px solid #2a2a4e}
+.crow:last-child{border-bottom:none}
+.crow span:last-child{color:#FFD700}
+</style>
+</head>
+<body>
+
+<div class="screen" id="scrStart">
+  <div class="px title">📐 일차함수<br>마리오 퀴즈!</div>
+  <div class="px sub">← → 로 이동, ↑ / Space 로 점프<br>정답 블럭 밑에서 점프해서 맞혀라!<br>파이프에 들어가면 다음 문제 이동 🪙</div>
+  <input class="px-input" id="inName" placeholder="이름 입력" maxlength="10">
+  <input class="px-input" id="inId"   placeholder="학번 입력" maxlength="10" style="margin-top:-6px">
+  <button class="px-btn" onclick="startGame()">▶ START</button>
+</div>
+
+<div class="screen" id="scrOver" style="display:none">
+  <div class="px title" style="color:#E52521">GAME OVER</div>
+  <div class="px sub" id="goMsg"></div>
+  <button class="px-btn" onclick="location.reload()">↺ 다시하기</button>
+</div>
+
+<div class="screen" id="scrClear" style="display:none">
+  <div class="px title" style="color:#FFD700">🎉 CLEAR!</div>
+  <div class="cstat" id="clearStat"></div>
+  <div class="px sub" id="saveMsg" style="font-size:8px;color:#aaa;margin-top:4px"></div>
+  <button class="px-btn" onclick="location.reload()">↺ 다시하기</button>
+</div>
+
+<div id="hud">
+  <div class="hi"><span class="hl">SCORE</span><span class="hv" id="hScore">0</span></div>
+  <div class="hi"><span class="hl">COINS</span><span class="hv" id="hCoins">🪙0</span></div>
+  <div class="hi"><span class="hl">CLEAR</span><span class="hv" id="hQ">0/5</span></div>
+  <div class="hi"><span class="hl">LIVES</span><span class="hv" id="hLives">❤️❤️❤️</span></div>
+</div>
+
+<canvas id="c" tabindex="0"></canvas>
+
+<div id="qOverlay">
+  <div class="qtw"><div class="qtb" id="qBar"></div></div>
+  <div class="qbox">
+    <div class="qn" id="qN"></div>
+    <div class="qt2" id="qT"></div>
+    <div class="qs" id="qS"></div>
+  </div>
+  <div id="qChoices" style="display:flex;flex-direction:column;gap:8px;width:100%;max-width:520px"></div>
+  <div class="qfb" id="qFb"></div>
+</div>
+
+<div class="mbtn" id="btnL" style="left:14px">◀</div>
+<div class="mbtn" id="btnR" style="left:86px">▶</div>
+<div class="mbtn" id="btnJ" style="right:14px">🅐</div>
+
+<script>
+// ── Firebase ──────────────────────────────────
+const FBC={
+  apiKey:"AIzaSyD79uao_j3-MLp7712PlGNT6CFje0zmZWw",
+  authDomain:"functionproject-85177.firebaseapp.com",
+  databaseURL:"https://functionproject-85177-default-rtdb.firebaseio.com",
+  projectId:"functionproject-85177",
+  storageBucket:"functionproject-85177.firebasestorage.app",
+  messagingSenderId:"405564164324",
+  appId:"1:405564164324:web:b6103f58eb74a4d09704f1"
+};
+let fbDB=null;
+(function(){
+  const s1=document.createElement('script');
+  s1.src='https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js';
+  s1.onload=()=>{
+    const s2=document.createElement('script');
+    s2.src='https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js';
+    s2.onload=()=>{firebase.initializeApp(FBC);fbDB=firebase.database();};
+    document.head.appendChild(s2);
+  };
+  document.head.appendChild(s1);
+})();
+
+// ── 문제 ─────────────────────────────────────
+const QS=[
+  {t:"y = 3x + 1 의 그래프는 어느 방향?",
+   s:"기울기 a = 3의 부호를 보세요",
+   c:["오른쪽 위로 향한다","오른쪽 아래로 향한다","수평선이다"],a:0,
+   e:"a=3>0 → 오른쪽 위로 향합니다!"},
+  {t:"y = −2x + 5 에서 x가 커지면 y는?",
+   s:"기울기 a = −2를 생각해보세요",
+   c:["y도 커진다","y는 작아진다","y는 변하지 않는다"],a:1,
+   e:"a<0 → x증가 시 y는 감소!"},
+  {t:"y=2x+3 과 y=2x−1 의 관계는?",
+   s:"기울기가 같을 때 두 직선은?",
+   c:["서로 평행하다","한 점에서 만난다","완전히 일치한다"],a:0,
+   e:"기울기 같고 y절편 다름 → 평행!"},
+  {t:"기울기 −½ 인 그래프 모양은?",
+   s:"|a|크기와 방향을 함께 생각해요",
+   c:["완만하게 오른쪽 아래","가파르게 오른쪽 위","완만하게 오른쪽 위"],a:0,
+   e:"a<0→아래방향, |a|=½<1→완만"},
+  {t:"두 직선이 평행하려면?",
+   s:"탐구2에서 발견한 규칙!",
+   c:["기울기 같고 y절편이 달라야","기울기·y절편 모두 같아야","기울기가 달라야"],a:0,
+   e:"기울기 같고 y절편 다를 때 → 평행!"}
+];
+
+// ── 캔버스 ───────────────────────────────────
+const cv=document.getElementById('c');
+const ct=cv.getContext('2d');
+const VW=window.innerWidth;
+const VH=window.innerHeight-46;
+cv.width=VW; cv.height=VH;
+cv.style.marginTop='46px';
+
+const GY=VH-60;
+const ZONE=Math.max(VW,700);
+const MAPW=ZONE*6+200;
+const GRAV=0.52, JMP=-13, SPD=4.5;
+const QTMAX=20;
+
+// ── 입력 상태 ─────────────────────────────────
+const K={left:false,right:false,up:false};
+
+// 키보드 — window에 붙임 (iframe 포커스 문제 방지)
+window.addEventListener('keydown',e=>{
+  if(e.code==='ArrowLeft'||e.code==='KeyA')  K.left=true;
+  if(e.code==='ArrowRight'||e.code==='KeyD') K.right=true;
+  if(e.code==='ArrowUp'||e.code==='Space'||e.code==='KeyW'){
+    K.up=true;
+    if(gameRunning&&!qActive&&P.gr){P.vy=JMP;P.gr=false;}
+    e.preventDefault();
+  }
+},{passive:false});
+window.addEventListener('keyup',e=>{
+  if(e.code==='ArrowLeft'||e.code==='KeyA')  K.left=false;
+  if(e.code==='ArrowRight'||e.code==='KeyD') K.right=false;
+  if(e.code==='ArrowUp'||e.code==='Space'||e.code==='KeyW') K.up=false;
+});
+// 캔버스 클릭 시 포커스
+cv.addEventListener('click',()=>cv.focus());
+
+// 모바일 버튼
+function bindMBtn(id, onDown, onUp){
+  const el=document.getElementById(id);
+  ['touchstart','mousedown'].forEach(ev=>
+    el.addEventListener(ev,e=>{e.preventDefault();onDown();},{passive:false}));
+  ['touchend','touchcancel','mouseup','mouseleave'].forEach(ev=>
+    el.addEventListener(ev,e=>{e.preventDefault();if(onUp)onUp();},{passive:false}));
+}
+bindMBtn('btnL',()=>K.left=true, ()=>K.left=false);
+bindMBtn('btnR',()=>K.right=true,()=>K.right=false);
+bindMBtn('btnJ',()=>{
+  if(gameRunning&&!qActive&&P.gr){P.vy=JMP;P.gr=false;}
+},null);
+
+// ── 게임 상태 ─────────────────────────────────
+let pName='',pId='';
+let score=0,coins=0,lives=3,solved=0;
+let solvedSet=new Set();
+let camX=0,qActive=false,qInt=null,qTimer=0;
+let gameRunning=false;
+let P={},plats=[],coinObjs=[],pipeObjs=[],blockObjs=[],parts=[];
+
+function startGame(){
+  pName=document.getElementById('inName').value.trim()||'학생';
+  pId  =document.getElementById('inId').value.trim()||'000';
+  document.getElementById('scrStart').style.display='none';
+  document.getElementById('hud').style.display='flex';
+  initGame();
+}
+
+function initGame(){
+  score=0;coins=0;lives=3;solved=0;
+  solvedSet.clear();camX=0;qActive=false;parts=[];
+  buildMap();
+  gameRunning=true;
+  updateHUD();
+  cv.focus();
+  requestAnimationFrame(tick);
+}
+
+// ── 맵 ───────────────────────────────────────
+function buildMap(){
+  P={x:80,y:GY-58,w:30,h:54,vx:0,vy:0,gr:false,dir:1};
+  plats=[{x:0,y:GY,w:MAPW,h:60,col:'#5D4E37'}];
+  coinObjs=[]; pipeObjs=[]; blockObjs=[];
+
+  for(let q=0;q<5;q++){
+    const ox=ZONE*(q+1);
+    // 발판 3개
+    plats.push({x:ox-160,y:GY-100,w:100,h:14,col:'#9B7722'});
+    plats.push({x:ox+20, y:GY-185,w:80, h:14,col:'#9B7722'});
+    plats.push({x:ox+180,y:GY-120,w:100,h:14,col:'#9B7722'});
+
+    // 코인
+    const cpos=[
+      [ox-150,GY-140],[ox-120,GY-140],[ox-90,GY-140],[ox-60,GY-140],
+      [ox+30, GY-225],[ox+60, GY-225],[ox+90, GY-225],
+      [ox+190,GY-160],[ox+230,GY-160]
+    ];
+    cpos.forEach(([cx2,cy2])=>coinObjs.push({x:cx2,y:cy2,r:9,got:false,ph:Math.random()*6.28}));
+
+    // 문제 블럭 3개
+    const ord=sh3(), by=GY-290;
+    const bc=['#C0392B','#1A5276','#1E8449'];
+    for(let b=0;b<3;b++){
+      blockObjs.push({x:ox-40+b*125,y:by,w:112,h:42,qi:q,ci:ord[b],col:bc[b],hit:false,shk:0});
+    }
+
+    // 파이프
+    pipeObjs.push({x:ox+ZONE-120,y:GY-92,w:58,h:92,qi:q});
+  }
+}
+
+function sh3(){
+  const a=[0,1,2];
+  for(let i=2;i>0;i--){const j=0|Math.random()*(i+1);[a[i],a[j]]=[a[j],a[i]];}
+  return a;
+}
+
+// ── 루프 ─────────────────────────────────────
+function tick(){
+  if(!gameRunning)return;
+  if(!qActive)update();
+  render();
+  requestAnimationFrame(tick);
+}
+
+// ── 업데이트 ──────────────────────────────────
+function update(){
+  // 이동
+  if(K.left) {P.vx=-SPD; P.dir=-1;}
+  else if(K.right){P.vx= SPD; P.dir= 1;}
+  else P.vx*=0.65;
+
+  // 물리
+  P.vy=Math.min(P.vy+GRAV, 18);
+  P.x+=P.vx;
+  P.y+=P.vy;
+  P.x=Math.max(0,Math.min(MAPW-P.w,P.x));
+  P.gr=false;
+
+  // 플랫폼 충돌
+  for(const pl of plats){
+    if(!hit(P,pl))continue;
+    const oT=(P.y+P.h)-pl.y, oB=(pl.y+pl.h)-P.y;
+    const oL=(P.x+P.w)-pl.x, oR=(pl.x+pl.w)-P.x;
+    const mn=Math.min(oT,oB,oL,oR);
+    if(mn===oT&&P.vy>=0){P.y=pl.y-P.h;P.vy=0;P.gr=true;}
+    else if(mn===oB&&P.vy<0){P.y=pl.y+pl.h;P.vy=Math.abs(P.vy)*0.1;}
+    else if(mn===oL){P.x=pl.x-P.w;P.vx=0;}
+    else{P.x=pl.x+pl.w;P.vx=0;}
+  }
+
+  // 추락
+  if(P.y>VH+100){loseLife();return;}
+
+  // 코인
+  for(const co of coinObjs){
+    if(!co.got&&cHit(co,P)){
+      co.got=true;coins++;score+=50;
+      popup('+50',co.x-camX,co.y,'#FFD700');
+      updateHUD();
+    }
+    co.ph+=0.065;
+  }
+
+  // 문제 블럭 — 아래서 머리박기
+  for(const bl of blockObjs){
+    if(bl.hit)continue;
+    if(bl.shk>0)bl.shk--;
+    if(!hit(P,bl))continue;
+    const oT=(P.y+P.h)-bl.y, oB=(bl.y+bl.h)-P.y;
+    const oL=(P.x+P.w)-bl.x, oR=(bl.x+bl.w)-P.x;
+    const mn=Math.min(oT,oB,oL,oR);
+    if(mn===oB&&P.vy<0){
+      // 아래서 머리 박음
+      P.vy=5; P.y=bl.y+bl.h+1;
+      bl.hit=true;
+      processBlock(bl);
+      return;
+    } else if(mn===oT&&P.vy>=0){
+      P.y=bl.y-P.h;P.vy=0;P.gr=true;
+    } else if(mn===oL){P.x=bl.x-P.w;P.vx=0;}
+    else{P.x=bl.x+bl.w;P.vx=0;}
+  }
+
+  // 파이프
+  for(const pp of pipeObjs){
+    const pr={x:pp.x,y:pp.y,w:pp.w,h:pp.h};
+    if(!hit(P,pr))continue;
+    if(solvedSet.has(pp.qi)){
+      if(pp.qi===4){triggerClear();return;}
+      P.x=ZONE*(pp.qi+2)+80; P.y=GY-80; P.vx=0; P.vy=0;
+      camX=Math.max(0,Math.min(MAPW-VW,P.x-VW/3));
+      return;
+    } else {
+      // 막힌 파이프 밀기
+      const fromL=(P.x+P.w)-pp.x, fromR=(pp.x+pp.w)-P.x;
+      if(fromL<fromR){P.x=pp.x-P.w;}else{P.x=pp.x+pp.w;}
+      P.vx=0;
+    }
+  }
+
+  // 카메라
+  const tgt=Math.max(0,Math.min(MAPW-VW,P.x-VW/3));
+  camX+=(tgt-camX)*0.14;
+
+  // 파티클
+  parts=parts.filter(p=>{p.x+=p.vx;p.y+=p.vy;p.vy+=0.2;p.life--;return p.life>0;});
+}
+
+// ── 블럭 처리 ─────────────────────────────────
+function processBlock(bl){
+  const Q=QS[bl.qi], ok=(bl.ci===Q.a);
+  if(ok){
+    solvedSet.add(bl.qi); solved++;
+    blockObjs.filter(b=>b.qi===bl.qi).forEach(b=>{
+      b.hit=true; b.col=(b.ci===Q.a)?'#FFD700':'#555';
+    });
+    score+=200;
+    popup('+200 정답!',bl.x-camX+bl.w/2,bl.y,'#FFD700');
+    spawnParts(bl.x-camX+bl.w/2,bl.y);
+    updateHUD();
+  } else {
+    bl.col='#555'; bl.shk=16;
+    score=Math.max(0,score-100); lives--;
+    popup('-100 오답!',bl.x-camX+bl.w/2,bl.y,'#E52521');
+    updateHUD();
+    if(lives<=0){setTimeout(triggerGameover,500);return;}
+    setTimeout(()=>showWrong(bl.qi,Q),350);
+  }
+}
+
+// ── 오답 해설 오버레이 ───────────────────────────
+function showWrong(qi,Q){
+  qActive=true;
+  document.getElementById('qN').textContent=`문제 ${qi+1}/5 — 오답 해설`;
+  document.getElementById('qT').textContent=Q.t;
+  document.getElementById('qS').textContent=Q.s;
+  document.getElementById('qFb').textContent='✗ 오답! 정답은 ▼  |  '+Q.e;
+  document.getElementById('qFb').style.color='#FF8C00';
+  document.getElementById('qBar').style.width='0%';
+  const ch=document.getElementById('qChoices');
+  ch.innerHTML='';
+  Q.c.forEach((txt,i)=>{
+    const btn=document.createElement('button');
+    btn.className='cbtn'+(i===Q.a?' ok':'');
+    btn.textContent=(i===0?'① ':i===1?'② ':'③ ')+txt;
+    btn.disabled=true;
+    ch.appendChild(btn);
+  });
+  document.getElementById('qOverlay').style.display='flex';
+  setTimeout(closeQ,2500);
+}
+
+function closeQ(){
+  document.getElementById('qOverlay').style.display='none';
+  qActive=false;
+  cv.focus();
+}
+
+// ── 렌더 ─────────────────────────────────────
+function render(){
+  // 하늘
+  ct.fillStyle='#5499D8'; ct.fillRect(0,0,VW,VH);
+  drawClouds();
+
+  ct.save(); ct.translate(-camX,0);
+
+  // 지면
+  ct.fillStyle='#4a7c3f'; ct.fillRect(0,GY,MAPW,12);
+  ct.fillStyle='#8B6050'; ct.fillRect(0,GY+12,MAPW,48);
+
+  // 발판
+  for(const pl of plats){
+    if(pl.y===GY)continue;
+    ct.fillStyle=pl.col;
+    ct.fillRect(pl.x,pl.y,pl.w,pl.h);
+    ct.fillStyle='rgba(255,255,255,0.2)'; ct.fillRect(pl.x,pl.y,pl.w,4);
+    ct.fillStyle='rgba(0,0,0,0.2)';       ct.fillRect(pl.x,pl.y+pl.h-3,pl.w,3);
+  }
+
+  // 파이프
+  pipeObjs.forEach(p=>drawPipe(p));
+
+  // 문제 블럭
+  blockObjs.forEach(b=>drawBlock(b));
+
+  // 코인
+  for(const co of coinObjs){
+    if(co.got)continue;
+    const bob=Math.sin(co.ph)*3;
+    ct.fillStyle='#FFD700';
+    ct.beginPath();ct.arc(co.x,co.y+bob,co.r,0,6.28);ct.fill();
+    ct.fillStyle='#7d5a00';
+    ct.font='bold 8px monospace';ct.textAlign='center';
+    ct.fillText('$',co.x,co.y+bob+3);ct.textAlign='left';
+  }
+
+  // 파티클
+  for(const p of parts){
+    ct.globalAlpha=p.life/p.maxL;
+    ct.fillStyle=p.col; ct.fillRect(p.x,p.y,p.sz,p.sz);
+  }
+  ct.globalAlpha=1;
+
+  // 플레이어
+  drawPlayer();
+
+  ct.restore();
+
+  // 진행바
+  ct.fillStyle='rgba(0,0,0,0.3)'; ct.fillRect(0,VH-5,VW,5);
+  ct.fillStyle='#FFD700';         ct.fillRect(0,VH-5,(solved/5)*VW,5);
+}
+
+function drawClouds(){
+  const cls=[{bx:180,y:60,r:50},{bx:500,y:48,r:36},{bx:820,y:72,r:58},{bx:1150,y:52,r:42}];
+  ct.fillStyle='rgba(255,255,255,0.87)';
+  cls.forEach(cl=>{
+    const px=((cl.bx-camX*0.22)%VW+VW)%VW;
+    ct.beginPath();ct.arc(px,cl.y,cl.r,0,6.28);ct.fill();
+    ct.beginPath();ct.arc(px+cl.r*.7,cl.y+10,cl.r*.62,0,6.28);ct.fill();
+    ct.beginPath();ct.arc(px-cl.r*.6,cl.y+11,cl.r*.52,0,6.28);ct.fill();
+  });
+}
+
+function drawPipe(pp){
+  const open=solvedSet.has(pp.qi);
+  ct.fillStyle=open?'#239B56':'#1A5276';
+  ct.fillRect(pp.x+4,pp.y+22,pp.w-8,pp.h-22);
+  ct.fillStyle=open?'#2ECC71':'#2E86C1';
+  ct.fillRect(pp.x,pp.y,pp.w,24);
+  ct.fillStyle='rgba(255,255,255,0.14)';
+  ct.fillRect(pp.x+7,pp.y+2,9,pp.h-4);
+  ct.font='15px monospace'; ct.textAlign='center';
+  ct.fillText(open?'▼':'🔒',pp.x+pp.w/2,pp.y+pp.h/2+8);
+  if(!open){
+    ct.fillStyle='#FFD700';
+    ct.font='bold 10px monospace';
+    ct.fillText('Q'+(pp.qi+1)+' 풀기!',pp.x+pp.w/2,pp.y-8);
+  }
+  ct.textAlign='left';
+}
+
+function drawBlock(bl){
+  const sx=bl.shk>0?(Math.random()*6-3):0;
+  ct.fillStyle=bl.col;
+  ct.fillRect(bl.x+sx,bl.y,bl.w,bl.h);
+  ct.strokeStyle='rgba(0,0,0,0.3)';ct.lineWidth=2;
+  ct.strokeRect(bl.x+sx,bl.y,bl.w,bl.h);
+  ct.fillStyle='rgba(255,255,255,0.15)';
+  ct.fillRect(bl.x+sx,bl.y,bl.w,5);
+
+  const raw=bl.hit?(bl.col==='#FFD700'?'✓ 정답!':'✗')
+    :(bl.ci===0?'① ':bl.ci===1?'② ':'③ ')+QS[bl.qi].c[bl.ci];
+
+  ct.fillStyle='#fff';
+  ct.font='bold 10.5px Apple SD Gothic Neo, sans-serif';
+  ct.textAlign='center';
+  // 줄바꿈
+  const maxW=bl.w-10;
+  const words=raw.split('');
+  let line='',lines=[];
+  for(const ch of raw){
+    if(ct.measureText(line+ch).width>maxW){lines.push(line);line=ch;}
+    else line+=ch;
+  }
+  if(line)lines.push(line);
+  lines=lines.slice(0,3);
+  const sy=bl.y+bl.h/2-(lines.length-1)*7+2;
+  lines.forEach((l,i)=>ct.fillText(l,bl.x+sx+bl.w/2,sy+i*14));
+  ct.textAlign='left';
+}
+
+function drawPlayer(){
+  const x=Math.round(P.x-camX), y=Math.round(P.y);
+  ct.save();
+  if(P.dir===-1){ct.translate(x+P.w,y);ct.scale(-1,1);}
+  else ct.translate(x,y);
+  const w=P.w;
+  ct.fillStyle='#E52521'; ct.fillRect(2,0,w-4,9); ct.fillRect(4,7,w-8,4); // 모자
+  ct.fillStyle='#F5CBA7'; ct.fillRect(5,9,w-10,12); // 얼굴
+  ct.fillStyle='#000';    ct.fillRect(11,12,3,3);    // 눈
+  ct.fillStyle='#5D4037'; ct.fillRect(6,18,w-12,3);  // 콧수염
+  ct.fillStyle='#E52521'; ct.fillRect(3,21,w-6,12);  // 셔츠
+  ct.fillStyle='#2471A3'; ct.fillRect(3,31,w-6,14);  // 바지
+  ct.fillStyle='#F5CBA7'; ct.fillRect(0,23,5,5);ct.fillRect(w-5,23,5,5); // 손
+  ct.fillStyle='#5D4037'; ct.fillRect(1,44,12,8);ct.fillRect(w-13,44,12,8); // 신발
+  ct.restore();
+}
+
+// ── 유틸 ─────────────────────────────────────
+function hit(a,b){return a.x<b.x+b.w&&a.x+a.w>b.x&&a.y<b.y+b.h&&a.y+a.h>b.y;}
+function cHit(c,r){
+  const nx=Math.max(r.x,Math.min(c.x,r.x+r.w));
+  const ny=Math.max(r.y,Math.min(c.y,r.y+r.h));
+  return(c.x-nx)**2+(c.y-ny)**2<c.r**2;
+}
+function popup(text,x,y,col){
+  const el=document.createElement('div');
+  el.className='spop';
+  el.style.cssText=`left:${Math.round(x)}px;top:${Math.round(y+46)}px;color:${col}`;
+  el.textContent=text; document.body.appendChild(el);
+  setTimeout(()=>el.remove(),900);
+}
+function spawnParts(x,y){
+  const cols=['#FFD700','#FFF','#FFD700','#FF8C00'];
+  for(let i=0;i<14;i++){
+    parts.push({x,y,vx:(Math.random()-.5)*7,vy:Math.random()*-6-1,
+      sz:3+Math.random()*4,col:cols[i%cols.length],life:32,maxL:32});
+  }
+}
+function loseLife(){
+  lives--; updateHUD();
+  if(lives<=0){triggerGameover();return;}
+  // 직전 세이브포인트로 복귀
+  P.x=Math.max(80,camX+80); P.y=GY-80; P.vx=0; P.vy=0;
+}
+function updateHUD(){
+  document.getElementById('hScore').textContent=score.toLocaleString();
+  document.getElementById('hCoins').textContent='🪙'+coins;
+  document.getElementById('hQ').textContent=solved+'/5';
+  document.getElementById('hLives').textContent='❤️'.repeat(Math.max(0,lives));
+}
+
+function triggerGameover(){
+  gameRunning=false;
+  document.getElementById('scrOver').style.display='flex';
+  document.getElementById('goMsg').textContent='SCORE: '+score.toLocaleString();
+}
+function triggerClear(){
+  gameRunning=false;
+  const tot=coinObjs.length, got=coinObjs.filter(c=>c.got).length;
+  document.getElementById('clearStat').innerHTML=`
+    <div class="crow"><span>이름</span><span>${pName} (${pId})</span></div>
+    <div class="crow"><span>최종점수</span><span>${score.toLocaleString()}</span></div>
+    <div class="crow"><span>코인</span><span>${got}/${tot}</span></div>
+    <div class="crow"><span>남은목숨</span><span>${lives}</span></div>`;
+  document.getElementById('scrClear').style.display='flex';
+  if(fbDB){
+    document.getElementById('saveMsg').textContent='점수 저장 중...';
+    fbDB.ref('quiz_scores').push({name:pName,studentId:pId,score,coins:got,lives,time:Date.now()})
+      .then(()=>document.getElementById('saveMsg').textContent='✓ 점수 저장 완료!')
+      .catch(()=>document.getElementById('saveMsg').textContent='저장 실패');
+  }
+}
+</script>
+</body>
+</html>
