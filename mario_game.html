@@ -2,165 +2,188 @@
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>일차함수 마리오 퀴즈</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
 *{margin:0;padding:0;box-sizing:border-box}
-body{background:#000;display:flex;flex-direction:column;align-items:center;
-  justify-content:center;height:100vh;overflow:hidden;font-family:'Apple SD Gothic Neo',sans-serif}
-#game-container{position:relative;width:800px;max-width:100vw}
-canvas{display:block;width:100%;image-rendering:pixelated}
+body{min-height:100vh;background:#1a1a2e;font-family:'Apple SD Gothic Neo',sans-serif;
+  display:flex;align-items:center;justify-content:center;overflow:hidden}
 
-/* 오버레이 공통 */
-.overlay{position:absolute;inset:0;display:flex;flex-direction:column;
-  align-items:center;justify-content:center;gap:14px;padding:20px;z-index:10}
-.hidden{display:none!important}
-.pxf{font-family:'Press Start 2P',monospace}
+/* 배경 파이프 데코 */
+body::before{content:'';position:fixed;inset:0;
+  background:
+    radial-gradient(ellipse at 20% 80%, rgba(39,174,96,0.15) 0%, transparent 50%),
+    radial-gradient(ellipse at 80% 20%, rgba(83,74,183,0.15) 0%, transparent 50%);
+  pointer-events:none}
 
-/* 시작/종료/클리어 */
-#ui-start,#ui-over,#ui-clear{background:rgba(0,0,0,0.92);border:3px solid #FFD700;border-radius:12px;
-  position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;
-  justify-content:center;gap:14px;padding:24px;z-index:20}
-.title{font-family:'Press Start 2P',monospace;font-size:18px;color:#FFD700;
-  text-shadow:3px 3px #7d5a00;line-height:1.7;text-align:center}
-.sub{font-family:'Press Start 2P',monospace;font-size:8px;color:#ccc;
-  text-align:center;line-height:2.2}
-.px-btn{font-family:'Press Start 2P',monospace;font-size:11px;padding:12px 24px;
-  background:#E52521;color:#fff;border:none;border-radius:4px;cursor:pointer;
-  box-shadow:0 4px #8B1210;transition:transform .1s}
-.px-btn:active{transform:translateY(3px);box-shadow:0 1px #8B1210}
-.px-input{font-family:'Press Start 2P',monospace;font-size:10px;padding:10px 12px;
-  background:#000;color:#FFD700;border:2px solid #FFD700;border-radius:4px;
-  text-align:center;outline:none;width:190px}
+.wrap{width:100%;max-width:680px;padding:16px;position:relative}
+
+/* ── 시작 화면 ── */
+#scr-start{text-align:center;padding:40px 24px}
+.game-title{font-family:'Press Start 2P',monospace;font-size:20px;color:#FFD700;
+  text-shadow:4px 4px #7d5a00;line-height:1.8;margin-bottom:20px}
+.game-sub{font-family:'Press Start 2P',monospace;font-size:8px;color:#aaa;
+  line-height:2.4;margin-bottom:28px}
+.name-box{display:flex;flex-direction:column;gap:10px;align-items:center;margin-bottom:24px}
+.px-input{font-family:'Press Start 2P',monospace;font-size:10px;padding:12px 16px;
+  background:#000;color:#FFD700;border:2px solid #FFD700;border-radius:6px;
+  text-align:center;outline:none;width:220px}
 .px-input::placeholder{color:#444}
+.px-input:focus{border-color:#fff;box-shadow:0 0 0 3px rgba(255,215,0,0.2)}
+.start-btn{font-family:'Press Start 2P',monospace;font-size:13px;padding:16px 36px;
+  background:#E52521;color:#fff;border:none;border-radius:6px;cursor:pointer;
+  box-shadow:0 5px #8B1210;transition:all .1s;margin-top:4px}
+.start-btn:hover{background:#ff3330}
+.start-btn:active{transform:translateY(4px);box-shadow:0 1px #8B1210}
 
-/* HUD */
-#hud{position:absolute;top:0;left:0;right:0;height:40px;background:#111;
-  display:flex;align-items:center;justify-content:space-around;
-  border-bottom:2px solid #333;z-index:5}
-.hi{display:flex;flex-direction:column;align-items:center;gap:1px}
-.hl{font-family:'Press Start 2P',monospace;font-size:6px;color:#888}
-.hv{font-family:'Press Start 2P',monospace;font-size:10px;color:#FFD700}
+/* ── HUD ── */
+#hud{display:none;justify-content:space-between;align-items:center;
+  background:#111;border:2px solid #333;border-radius:10px;
+  padding:12px 20px;margin-bottom:14px}
+.hud-item{text-align:center}
+.hud-label{font-family:'Press Start 2P',monospace;font-size:7px;color:#888;display:block;margin-bottom:3px}
+.hud-val{font-family:'Press Start 2P',monospace;font-size:13px;color:#FFD700}
 
-/* 문제 오버레이 */
-#ui-q{position:absolute;inset:0;background:rgba(0,0,0,0.94);
-  display:flex;flex-direction:column;align-items:center;justify-content:center;
-  gap:10px;padding:16px;z-index:15}
-.qtw{width:100%;max-width:500px;height:8px;background:#333;border-radius:4px;overflow:hidden}
-.qtb{height:100%;background:#FFD700;transition:width .08s linear}
-.qbox{background:#16213e;border:3px solid #FFD700;border-radius:10px;
-  padding:16px 20px;max-width:500px;width:100%;text-align:center}
-.qnum{font-family:'Press Start 2P',monospace;font-size:7px;color:#888;margin-bottom:8px}
-.qtext{font-size:16px;font-weight:700;color:#fff;line-height:1.6;margin-bottom:4px}
-.qsub{font-size:12px;color:#aaa}
-.cbtn{font-size:13px;font-weight:600;padding:11px 14px;background:#1a1a2e;color:#fff;
-  border:2px solid #534AB7;border-radius:8px;cursor:pointer;text-align:left;
-  width:100%;max-width:500px;font-family:inherit;transition:background .1s}
-.cbtn:hover,.cbtn:active{background:#534AB7}
-.cbtn.ok{background:#1D9E75!important;border-color:#9FE1CB!important}
-.cbtn.ng{background:#D85A30!important;border-color:#F0997B!important}
-.qfb{font-family:'Press Start 2P',monospace;font-size:8px;text-align:center;
-  min-height:18px;color:#fff;max-width:500px;line-height:1.6}
+/* ── 문제 카드 ── */
+#scr-game{display:none}
+.q-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+.q-num{font-family:'Press Start 2P',monospace;font-size:9px;color:#888}
+.timer-wrap{flex:1;height:10px;background:#333;border-radius:5px;overflow:hidden;margin:0 14px}
+.timer-bar{height:100%;background:#FFD700;border-radius:5px;transition:width .1s linear}
+.timer-txt{font-family:'Press Start 2P',monospace;font-size:11px;color:#FFD700;min-width:24px;text-align:right}
 
-/* 점수 팝업 */
-.spop{position:absolute;font-family:'Press Start 2P',monospace;font-size:10px;
-  pointer-events:none;z-index:18;animation:fup .9s ease-out forwards}
-@keyframes fup{0%{opacity:1;transform:translateY(0)}100%{opacity:0;transform:translateY(-50px)}}
+.q-card{background:#16213e;border:3px solid #534AB7;border-radius:14px;
+  padding:22px 24px;margin-bottom:16px;text-align:center}
+.q-text{font-size:20px;font-weight:700;color:#fff;line-height:1.6;margin-bottom:8px}
+.q-hint{font-size:13px;color:#aaa}
 
-/* 모바일 버튼 */
-#mobile-btns{position:absolute;bottom:8px;left:0;right:0;
-  display:flex;justify-content:space-between;padding:0 12px;z-index:8;pointer-events:none}
-.mrow{display:flex;gap:8px;pointer-events:auto}
-.mbtn{width:56px;height:56px;background:rgba(255,255,255,0.15);border-radius:50%;
-  border:2px solid rgba(255,255,255,0.3);display:flex;align-items:center;
-  justify-content:center;font-size:18px;cursor:pointer;touch-action:none;
-  -webkit-tap-highlight-color:transparent;user-select:none}
-.mbtn:active{background:rgba(255,255,255,0.35)}
+/* 보기 버튼 */
+.choices{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.choice{font-size:16px;font-weight:700;padding:20px 14px;border:none;border-radius:12px;
+  cursor:pointer;transition:transform .1s, filter .1s;text-align:center;
+  display:flex;align-items:center;justify-content:center;gap:10px;min-height:80px;
+  font-family:inherit;line-height:1.4}
+.choice:active{transform:scale(0.95)}
+.choice:disabled{cursor:not-allowed;filter:brightness(0.6)}
+.choice-0{background:#E52521;color:#fff}
+.choice-1{background:#1A6FB5;color:#fff}
+.choice-2{background:#239B56;color:#fff}
+.choice-0:hover:not(:disabled){filter:brightness(1.15)}
+.choice-1:hover:not(:disabled){filter:brightness(1.15)}
+.choice-2:hover:not(:disabled){filter:brightness(1.15)}
+.choice.correct{animation:correct-flash .4s ease;box-shadow:0 0 0 4px #FFD700}
+.choice.wrong{animation:wrong-shake .4s ease;filter:brightness(0.5)}
+@keyframes correct-flash{0%{transform:scale(1)}50%{transform:scale(1.06)}100%{transform:scale(1)}}
+@keyframes wrong-shake{0%{transform:translateX(0)}25%{transform:translateX(-8px)}75%{transform:translateX(8px)}100%{transform:translateX(0)}}
 
-/* 파이프 입장 트랜지션 */
-#pipe-transition{position:absolute;inset:0;background:#000;opacity:0;
-  pointer-events:none;z-index:12;transition:opacity 0.4s}
-#pipe-transition.fade-in{opacity:1}
+.choice-icon{font-size:22px}
+.choice-label{font-size:11px;opacity:0.7;font-family:'Press Start 2P',monospace}
 
-/* 클리어 통계 */
-.cstat{background:#16213e;border:2px solid #FFD700;border-radius:8px;
-  padding:12px 20px;min-width:260px}
-.crow{font-family:'Press Start 2P',monospace;font-size:8px;color:#ccc;
-  padding:5px 0;display:flex;justify-content:space-between;gap:14px;
-  border-bottom:1px solid #2a2a4e}
-.crow:last-child{border-bottom:none}
-.crow span:last-child{color:#FFD700}
+/* 피드백 */
+.feedback{border-radius:10px;padding:14px 18px;text-align:center;
+  font-family:'Press Start 2P',monospace;font-size:10px;line-height:1.8;
+  margin-bottom:14px;display:none}
+.feedback.ok{background:#1D9E75;color:#fff;border:2px solid #9FE1CB}
+.feedback.ng{background:#C0392B;color:#fff;border:2px solid #F0997B}
+
+/* 다음 버튼 */
+.next-btn{display:none;width:100%;font-family:'Press Start 2P',monospace;
+  font-size:11px;padding:14px;background:#534AB7;color:#fff;border:none;
+  border-radius:10px;cursor:pointer;box-shadow:0 4px #3C3489;transition:all .1s}
+.next-btn:active{transform:translateY(3px);box-shadow:0 1px #3C3489}
+
+/* ── 결과 화면 ── */
+#scr-result{display:none;text-align:center;padding:24px}
+.result-title{font-family:'Press Start 2P',monospace;font-size:18px;color:#FFD700;
+  text-shadow:3px 3px #7d5a00;margin-bottom:20px;line-height:1.7}
+.result-stats{background:#16213e;border:2px solid #534AB7;border-radius:12px;
+  padding:16px 24px;margin-bottom:16px;text-align:left}
+.stat-row{display:flex;justify-content:space-between;align-items:center;
+  padding:8px 0;border-bottom:1px solid #2a2a4e;
+  font-family:'Press Start 2P',monospace;font-size:9px;color:#ccc}
+.stat-row:last-child{border-bottom:none}
+.stat-row span:last-child{color:#FFD700}
+.result-rank{font-family:'Press Start 2P',monospace;font-size:28px;
+  margin:10px 0;line-height:1.4}
+.save-msg{font-family:'Press Start 2P',monospace;font-size:8px;color:#aaa;margin-bottom:14px}
+.replay-btn{font-family:'Press Start 2P',monospace;font-size:11px;padding:14px 28px;
+  background:#E52521;color:#fff;border:none;border-radius:6px;cursor:pointer;
+  box-shadow:0 4px #8B1210}
+.replay-btn:active{transform:translateY(3px);box-shadow:0 1px #8B1210}
+
+/* 코인 파티클 */
+.coin-pop{position:fixed;font-size:20px;pointer-events:none;z-index:999;
+  animation:coinfly 0.9s ease-out forwards}
+@keyframes coinfly{
+  0%{opacity:1;transform:translateY(0) scale(1)}
+  100%{opacity:0;transform:translateY(-80px) scale(1.5)}}
+
+/* 마리오 장식 */
+.mario-deco{font-size:32px;margin-bottom:10px;animation:bounce 0.8s infinite alternate}
+@keyframes bounce{from{transform:translateY(0)}to{transform:translateY(-8px)}}
 </style>
 </head>
 <body>
-<div id="game-container">
-  <!-- HUD -->
-  <div id="hud">
-    <div class="hi"><span class="hl">SCORE</span><span class="hv" id="hScore">0</span></div>
-    <div class="hi"><span class="hl">COINS</span><span class="hv" id="hCoins">🪙0</span></div>
-    <div class="hi"><span class="hl">STAGE</span><span class="hv" id="hStage">1/5</span></div>
-    <div class="hi"><span class="hl">LIVES</span><span class="hv" id="hLives">❤️❤️❤️</span></div>
-  </div>
-
-  <!-- 게임 캔버스 -->
-  <canvas id="c" width="800" height="480"></canvas>
-
-  <!-- 파이프 트랜지션 -->
-  <div id="pipe-transition"></div>
+<div class="wrap">
 
   <!-- 시작 화면 -->
-  <div id="ui-start">
-    <div class="title">📐 일차함수<br>마리오 퀴즈!</div>
-    <div class="sub">← → 이동 &nbsp; ↑/Space 점프<br>정답 블럭 밑에서 점프해 맞혀라!<br>파이프로 다음 스테이지 이동 🪙</div>
-    <input class="px-input" id="inName" placeholder="이름 입력" maxlength="10">
-    <input class="px-input" id="inId" placeholder="학번 입력" maxlength="10">
-    <button class="px-btn" id="btnStart">▶ START</button>
-  </div>
-
-  <!-- 게임오버 -->
-  <div id="ui-over" class="hidden">
-    <div class="title" style="color:#E52521">GAME<br>OVER</div>
-    <div class="sub" id="overMsg"></div>
-    <button class="px-btn" onclick="location.reload()">↺ 다시하기</button>
-  </div>
-
-  <!-- 클리어 -->
-  <div id="ui-clear" class="hidden">
-    <div class="title" style="color:#FFD700">🎉 CLEAR!</div>
-    <div class="cstat" id="clearStat"></div>
-    <div class="sub" id="saveMsg" style="font-size:7px;color:#aaa"></div>
-    <button class="px-btn" onclick="location.reload()">↺ 다시하기</button>
-  </div>
-
-  <!-- 문제 오버레이 -->
-  <div id="ui-q" class="hidden">
-    <div class="qtw"><div class="qtb" id="qBar" style="width:100%"></div></div>
-    <div class="qbox">
-      <div class="qnum" id="qNum"></div>
-      <div class="qtext" id="qText"></div>
-      <div class="qsub" id="qSub"></div>
+  <div id="scr-start">
+    <div class="mario-deco">🍄</div>
+    <div class="game-title">일차함수<br>퀴즈!</div>
+    <div class="game-sub">5문제 · 타이머 · 점수 경쟁<br>빠를수록 고득점!</div>
+    <div class="name-box">
+      <input class="px-input" id="inName" placeholder="이름 입력" maxlength="10">
+      <input class="px-input" id="inId"   placeholder="학번 입력" maxlength="10">
     </div>
-    <div id="qChoices" style="display:flex;flex-direction:column;gap:8px;width:100%;max-width:500px"></div>
-    <div class="qfb" id="qFb"></div>
+    <button class="start-btn" onclick="startGame()">▶ START</button>
   </div>
 
-  <!-- 모바일 버튼 -->
-  <div id="mobile-btns">
-    <div class="mrow">
-      <div class="mbtn" id="btnL">◀</div>
-      <div class="mbtn" id="btnR">▶</div>
+  <!-- HUD -->
+  <div id="hud">
+    <div class="hud-item">
+      <span class="hud-label">SCORE</span>
+      <span class="hud-val" id="hScore">0</span>
     </div>
-    <div class="mrow">
-      <div class="mbtn" id="btnJ">🅐</div>
+    <div class="hud-item">
+      <span class="hud-label">COINS</span>
+      <span class="hud-val" id="hCoins">🪙 0</span>
+    </div>
+    <div class="hud-item">
+      <span class="hud-label">CORRECT</span>
+      <span class="hud-val" id="hCorrect">0/0</span>
     </div>
   </div>
+
+  <!-- 게임 화면 -->
+  <div id="scr-game">
+    <div class="q-header">
+      <span class="q-num" id="qNum">Q1/5</span>
+      <div class="timer-wrap"><div class="timer-bar" id="timerBar"></div></div>
+      <span class="timer-txt" id="timerTxt">15</span>
+    </div>
+    <div class="q-card">
+      <div class="q-text" id="qText"></div>
+      <div class="q-hint" id="qHint"></div>
+    </div>
+    <div class="choices" id="choices"></div>
+    <div class="feedback" id="feedback"></div>
+    <button class="next-btn" id="nextBtn" onclick="nextQuestion()">다음 문제 →</button>
+  </div>
+
+  <!-- 결과 화면 -->
+  <div id="scr-result">
+    <div class="result-rank" id="resultRank"></div>
+    <div class="result-title" id="resultTitle"></div>
+    <div class="result-stats" id="resultStats"></div>
+    <div class="save-msg" id="saveMsg"></div>
+    <button class="replay-btn" onclick="location.reload()">↺ 다시하기</button>
+  </div>
+
 </div>
 
 <script>
-// ══════════════════════════════════════════════
-// Firebase
-// ══════════════════════════════════════════════
+// ── Firebase ──────────────────────────────────
 const FBC={
   apiKey:"AIzaSyD79uao_j3-MLp7712PlGNT6CFje0zmZWw",
   authDomain:"functionproject-85177.firebaseapp.com",
@@ -183,582 +206,204 @@ let fbDB=null;
   document.head.appendChild(s1);
 })();
 
-// ══════════════════════════════════════════════
-// 문제 데이터
-// ══════════════════════════════════════════════
-const QUESTIONS=[
+// ── 문제 ─────────────────────────────────────
+const QS=[
   {t:"y = 3x + 1 의 그래프 방향은?",
-   s:"기울기 a = 3의 부호를 보세요",
-   c:["오른쪽 위로 향한다","오른쪽 아래로 향한다","수평선이다"],a:0,
-   e:"a=3>0 이므로 오른쪽 위!"},
+   h:"기울기 a = 3 의 부호를 보세요",
+   c:["오른쪽 위로 향한다","오른쪽 아래로 향한다","수평선이다"],
+   a:0, e:"a = 3 > 0 이므로 오른쪽 위로 향합니다!"},
   {t:"y = −2x + 5 에서 x가 커지면 y는?",
-   s:"기울기 a = −2를 생각해보세요",
-   c:["y도 커진다","y는 작아진다","y는 변하지 않는다"],a:1,
-   e:"a<0 이므로 x증가 → y감소!"},
-  {t:"y=2x+3 과 y=2x−1 의 관계는?",
-   s:"기울기가 같을 때 두 직선은?",
-   c:["서로 평행하다","한 점에서 만난다","완전히 일치한다"],a:0,
-   e:"기울기 같고 y절편 다름 → 평행!"},
+   h:"기울기 a = −2를 생각해보세요",
+   c:["y도 커진다","y는 작아진다","y는 변하지 않는다"],
+   a:1, e:"a < 0 이므로 x 증가 → y 감소!"},
+  {t:"y = 2x+3 과 y = 2x−1 의 관계는?",
+   h:"기울기가 같을 때 두 직선은?",
+   c:["서로 평행하다","한 점에서 만난다","완전히 일치한다"],
+   a:0, e:"기울기 같고 y절편 다름 → 평행!"},
   {t:"기울기 −½ 인 그래프 모양은?",
-   s:"|a| 크기와 방향을 함께 생각해요",
-   c:["완만하게 오른쪽 아래","가파르게 오른쪽 위","완만하게 오른쪽 위"],a:0,
-   e:"a<0→아래방향, |a|<1→완만"},
+   h:"|a| 크기와 방향을 함께 생각해요",
+   c:["완만하게 오른쪽 아래","가파르게 오른쪽 위","완만하게 오른쪽 위"],
+   a:0, e:"a < 0 → 아래방향, |a| < 1 → 완만"},
   {t:"두 직선이 평행하려면?",
-   s:"탐구2에서 발견한 규칙!",
-   c:["기울기 같고 y절편이 달라야","기울기·y절편 모두 같아야","기울기가 달라야"],a:0,
-   e:"기울기 같고 y절편 다를 때 → 평행!"}
+   h:"탐구2에서 발견한 규칙!",
+   c:["기울기 같고 y절편이 달라야","기울기·y절편 모두 같아야","기울기가 달라야"],
+   a:0, e:"기울기 같고 y절편 다를 때 → 평행!"}
 ];
 
-// ══════════════════════════════════════════════
-// 캔버스 & 상수
-// ══════════════════════════════════════════════
-const cv=document.getElementById('c');
-const ctx=cv.getContext('2d');
-const CW=800, CH=480;
-const GY=CH-60;          // 지면 y좌표
-const GRAV=0.55, JF=-13, SPD=4;
-const TILE=48;
-const QTMAX=20;
+const ICONS=['🍄','⭐','🌸'];
+const TIMER_MAX=15;
 
-// ══════════════════════════════════════════════
-// 입력
-// ══════════════════════════════════════════════
-const KEY={left:false,right:false,jump:false};
+let pName='', pId='';
+let qIdx=0, score=0, coins=0, correct=0;
+let timerVal=TIMER_MAX, timerInt=null;
+let answered=false;
 
-// 키보드 — document + window 둘 다
-function onKeyDown(e){
-  if(e.code==='ArrowLeft' ||e.code==='KeyA'){KEY.left=true;}
-  if(e.code==='ArrowRight'||e.code==='KeyD'){KEY.right=true;}
-  if(e.code==='ArrowUp'||e.code==='Space'||e.code==='KeyW'){
-    if(!KEY.jump){KEY.jump=true;doJump();}
-    e.preventDefault();
-  }
-}
-function onKeyUp(e){
-  if(e.code==='ArrowLeft' ||e.code==='KeyA'){KEY.left=false;}
-  if(e.code==='ArrowRight'||e.code==='KeyD'){KEY.right=false;}
-  if(e.code==='ArrowUp'||e.code==='Space'||e.code==='KeyW'){KEY.jump=false;}
-}
-document.addEventListener('keydown',onKeyDown);
-document.addEventListener('keyup',  onKeyUp);
-window.addEventListener('keydown',  onKeyDown);
-window.addEventListener('keyup',    onKeyUp);
-cv.setAttribute('tabindex','0');
-cv.addEventListener('click',()=>cv.focus());
-
-// 모바일
-function bindMobile(id,downFn,upFn){
-  const el=document.getElementById(id);
-  el.addEventListener('touchstart',e=>{e.preventDefault();downFn();},{passive:false});
-  el.addEventListener('touchend',  e=>{e.preventDefault();if(upFn)upFn();},{passive:false});
-  el.addEventListener('mousedown', e=>{e.preventDefault();downFn();},{passive:false});
-  el.addEventListener('mouseup',   e=>{e.preventDefault();if(upFn)upFn();},{passive:false});
-}
-bindMobile('btnL',()=>KEY.left=true, ()=>KEY.left=false);
-bindMobile('btnR',()=>KEY.right=true,()=>KEY.right=false);
-bindMobile('btnJ',()=>{doJump();},null);
-
-function doJump(){
-  if(G&&G.player&&G.player.onGround&&!G.paused){
-    G.player.vy=JF; G.player.onGround=false;
-  }
-}
-
-// ══════════════════════════════════════════════
-// 스테이지 데이터 생성
-// ══════════════════════════════════════════════
-function makeStage(qi){
-  // 각 스테이지는 800×480 한 화면
-  const Q=QUESTIONS[qi];
-  const ord=shuffle3();
-  const stage={
-    qi,
-    bg: ['#5499D8','#4a8fc7','#3d7eb5','#6ab0e8','#487db5'][qi],
-    platforms:[
-      // 지면
-      {x:0,   y:GY,   w:CW,  h:60, type:'ground'},
-      // 발판들
-      {x:80,  y:GY-110,w:120,h:16, type:'brick'},
-      {x:280, y:GY-180,w:100,h:16, type:'brick'},
-      {x:480, y:GY-130,w:120,h:16, type:'brick'},
-    ],
-    // 문제 블럭 3개 (천장에 배치 — 밑에서 머리 박기)
-    blocks: ord.map((ci,i)=>({
-      x:100+i*220, y:GY-300, w:160, h:44,
-      ci, qi, hit:false, shake:0,
-      col:['#C0392B','#1A5276','#1E8449'][i]
-    })),
-    // 코인
-    coins:[
-      {x:130,y:GY-155},{x:175,y:GY-155},{x:220,y:GY-155},
-      {x:310,y:GY-225},{x:355,y:GY-225},
-      {x:520,y:GY-175},{x:565,y:GY-175},{x:610,y:GY-175},
-    ].map(c=>({...c,r:10,got:false,phase:Math.random()*6.28})),
-    // 파이프 (오른쪽 끝, 클리어 후 열림)
-    pipe:{x:700,y:GY-100,w:64,h:100},
-    solved:false,
-  };
-  return stage;
-}
-
-function shuffle3(){
-  const a=[0,1,2];
-  for(let i=2;i>0;i--){const j=0|Math.random()*(i+1);[a[i],a[j]]=[a[j],a[i]];}
-  return a;
-}
-
-// ══════════════════════════════════════════════
-// 게임 객체 G
-// ══════════════════════════════════════════════
-let G=null;
-let pName='',pId='';
-let rafId=null;
-
+// ── 시작 ─────────────────────────────────────
 function startGame(){
   pName=document.getElementById('inName').value.trim()||'학생';
   pId  =document.getElementById('inId').value.trim()||'000';
-  document.getElementById('ui-start').classList.add('hidden');
-  cv.focus();
-  initGame();
-}
-document.getElementById('btnStart').addEventListener('click',startGame);
-document.getElementById('inId').addEventListener('keydown',e=>{if(e.code==='Enter')startGame();});
-
-function initGame(){
-  G={
-    score:0, coins:0, lives:3, stageIdx:0,
-    stage: makeStage(0),
-    player:{x:60,y:GY-80,w:32,h:52,vx:0,vy:0,onGround:false,dir:1,
-            animFrame:0,animTimer:0},
-    paused:false,
-    particles:[],
-    pipeEntering:false,
-  };
-  updateHUD();
-  if(rafId)cancelAnimationFrame(rafId);
-  rafId=requestAnimationFrame(loop);
+  document.getElementById('scr-start').style.display='none';
+  document.getElementById('hud').style.display='flex';
+  document.getElementById('scr-game').style.display='block';
+  qIdx=0; score=0; coins=0; correct=0;
+  showQuestion();
 }
 
-// ══════════════════════════════════════════════
-// 메인 루프
-// ══════════════════════════════════════════════
-let lastT=0;
-function loop(t){
-  rafId=requestAnimationFrame(loop);
-  const dt=Math.min((t-lastT)/16.67,3); lastT=t;
-  if(!G.paused) update(dt);
-  render();
-}
-
-// ══════════════════════════════════════════════
-// 업데이트
-// ══════════════════════════════════════════════
-function update(dt){
-  const P=G.player;
-  const S=G.stage;
-
-  // 이동
-  if(KEY.left) {P.vx=-SPD;P.dir=-1;}
-  else if(KEY.right){P.vx= SPD;P.dir= 1;}
-  else P.vx*=0.6;
-
-  // 물리
-  P.vy=Math.min(P.vy+GRAV*dt,20);
-  P.x+=P.vx*dt;
-  P.y+=P.vy*dt;
-  P.x=Math.max(0,Math.min(CW-P.w,P.x));
-  P.onGround=false;
-
-  // 플랫폼 충돌
-  for(const pl of S.platforms) resolvePlatform(P,pl);
-
-  // 블럭 충돌
-  for(const bl of S.blocks){
-    if(bl.hit)continue;
-    if(bl.shake>0)bl.shake-=dt;
-    if(!rectHit(P,bl))continue;
-    const oT=(P.y+P.h)-bl.y, oB=(bl.y+bl.h)-P.y;
-    const oL=(P.x+P.w)-bl.x, oR=(bl.x+bl.w)-P.x;
-    const mn=Math.min(oT,oB,oL,oR);
-    if(mn===oB&&P.vy<0){
-      // 머리박기!
-      P.vy=5; P.y=bl.y+bl.h+1;
-      bl.hit=true;
-      processBlock(bl,S);
-      return;
-    } else if(mn===oT&&P.vy>=0){P.y=bl.y-P.h;P.vy=0;P.onGround=true;}
-    else if(mn===oL){P.x=bl.x-P.w;P.vx=0;}
-    else{P.x=bl.x+bl.w;P.vx=0;}
-  }
-
-  // 코인
-  for(const co of S.coins){
-    if(!co.got&&circRectHit(co,P)){
-      co.got=true; G.coins++; G.score+=50;
-      spawnPopup('+50',co.x,co.y,'#FFD700');
-      updateHUD();
-    }
-    co.phase+=0.06*dt;
-  }
-
-  // 파이프
-  if(S.solved&&!G.pipeEntering){
-    const pp=S.pipe;
-    if(rectHit(P,{x:pp.x,y:pp.y,w:pp.w,h:pp.h})){
-      enterPipe();
-    }
-  } else if(!S.solved){
-    const pp=S.pipe;
-    // 파이프 막기
-    const fromL=(P.x+P.w)-pp.x, fromR=(pp.x+pp.w)-P.x;
-    if(rectHit(P,{x:pp.x,y:pp.y,w:pp.w,h:pp.h})){
-      if(fromL<fromR){P.x=pp.x-P.w;}else{P.x=pp.x+pp.w;}
-      P.vx=0;
-    }
-  }
-
-  // 추락
-  if(P.y>CH+50){loseLife();return;}
-
-  // 파티클
-  G.particles=G.particles.filter(p=>{
-    p.x+=p.vx*dt; p.y+=p.vy*dt; p.vy+=0.2*dt; p.life-=dt;
-    return p.life>0;
-  });
-
-  // 플레이어 애니
-  if(Math.abs(P.vx)>0.5){
-    P.animTimer+=dt;
-    if(P.animTimer>5){P.animFrame=(P.animFrame+1)%4;P.animTimer=0;}
-  } else P.animFrame=0;
-}
-
-function resolvePlatform(P,pl){
-  if(!rectHit(P,pl))return;
-  const oT=(P.y+P.h)-pl.y, oB=(pl.y+pl.h)-P.y;
-  const oL=(P.x+P.w)-pl.x, oR=(pl.x+pl.w)-P.x;
-  const mn=Math.min(oT,oB,oL,oR);
-  if(mn===oT&&P.vy>=0){P.y=pl.y-P.h;P.vy=0;P.onGround=true;}
-  else if(mn===oB&&P.vy<0){P.y=pl.y+pl.h;P.vy=Math.abs(P.vy)*0.2;}
-  else if(mn===oL){P.x=pl.x-P.w;P.vx=0;}
-  else{P.x=pl.x+pl.w;P.vx=0;}
-}
-
-// ══════════════════════════════════════════════
-// 블럭 판정
-// ══════════════════════════════════════════════
-function processBlock(bl,S){
-  const Q=QUESTIONS[bl.qi];
-  const ok=(bl.ci===Q.a);
-  if(ok){
-    // 정답!
-    S.solved=true;
-    S.blocks.filter(b=>b.qi===bl.qi).forEach(b=>{
-      b.hit=true; b.col=(b.ci===Q.a)?'#DAA520':'#444';
-    });
-    G.score+=200;
-    spawnPopup('+200 정답!',bl.x+bl.w/2,bl.y,'#FFD700');
-    spawnParticles(bl.x+bl.w/2,bl.y,'#FFD700');
-    updateHUD();
-  } else {
-    // 오답
-    bl.col='#444'; bl.shake=14;
-    G.score=Math.max(0,G.score-100); G.lives--;
-    spawnPopup('-100 오답!',bl.x+bl.w/2,bl.y,'#E52521');
-    updateHUD();
-    if(G.lives<=0){setTimeout(triggerGameover,400);return;}
-    // 오답 해설 표시
-    setTimeout(()=>showWrong(bl.qi,Q),300);
-  }
-}
-
-// ══════════════════════════════════════════════
-// 파이프 입장 (트랜지션 + 스테이지 전환)
-// ══════════════════════════════════════════════
-function enterPipe(){
-  G.pipeEntering=true;
-  G.paused=true;
-  // 플레이어를 파이프 안으로 이동
-  const P=G.player, pp=G.stage.pipe;
-  P.x=pp.x+(pp.w-P.w)/2;
-  P.vy=2; // 아래로 천천히
-
-  // 페이드 아웃
-  const trans=document.getElementById('pipe-transition');
-  trans.classList.add('fade-in');
-  setTimeout(()=>{
-    if(G.stageIdx>=4){
-      triggerClear(); return;
-    }
-    // 다음 스테이지
-    G.stageIdx++;
-    G.stage=makeStage(G.stageIdx);
-    G.player.x=60; G.player.y=GY-80;
-    G.player.vx=0; G.player.vy=0;
-    G.pipeEntering=false;
-    G.paused=false;
-    updateHUD();
-    // 페이드 인
-    setTimeout(()=>trans.classList.remove('fade-in'),100);
-  },500);
-}
-
-// ══════════════════════════════════════════════
-// 렌더링
-// ══════════════════════════════════════════════
-function render(){
-  if(!G)return;
-  const S=G.stage, P=G.player;
-
-  // 배경
-  ctx.fillStyle=S.bg;
-  ctx.fillRect(0,0,CW,CH-60);
-
-  // 구름
-  drawClouds();
-
-  // 지면
-  ctx.fillStyle='#4a7c3f'; ctx.fillRect(0,GY,CW,10);
-  ctx.fillStyle='#8B6050'; ctx.fillRect(0,GY+10,CW,50);
-  // 벽돌 패턴
-  ctx.strokeStyle='rgba(0,0,0,0.15)'; ctx.lineWidth=1;
-  for(let x=0;x<CW;x+=48){
-    for(let y=GY+10;y<CH;y+=16){
-      ctx.strokeRect(x+(y%32===0?24:0),y,48,16);
-    }
-  }
-
-  // 발판
-  for(const pl of S.platforms){
-    if(pl.type==='ground')continue;
-    ctx.fillStyle='#9B7722'; ctx.fillRect(pl.x,pl.y,pl.w,pl.h);
-    ctx.fillStyle='rgba(255,255,255,0.2)'; ctx.fillRect(pl.x,pl.y,pl.w,4);
-    ctx.fillStyle='rgba(0,0,0,0.2)'; ctx.fillRect(pl.x,pl.y+pl.h-3,pl.w,3);
-  }
-
-  // 파이프
-  drawPipe(S.pipe, S.solved);
-
-  // 문제 블럭
-  S.blocks.forEach(drawBlock);
-
-  // 코인
-  S.coins.forEach(co=>{
-    if(co.got)return;
-    const bob=Math.sin(co.phase)*3;
-    ctx.fillStyle='#FFD700';
-    ctx.beginPath(); ctx.arc(co.x,co.y+bob,co.r,0,6.28); ctx.fill();
-    ctx.fillStyle='#7d5a00';
-    ctx.font='bold 8px monospace'; ctx.textAlign='center';
-    ctx.fillText('$',co.x,co.y+bob+3); ctx.textAlign='left';
-  });
-
-  // 파티클
-  G.particles.forEach(p=>{
-    ctx.globalAlpha=Math.max(0,p.life/p.maxL);
-    ctx.fillStyle=p.col;
-    ctx.fillRect(p.x,p.y,p.sz,p.sz);
-  });
-  ctx.globalAlpha=1;
-
-  // 플레이어
-  drawPlayer(P);
-
-  // 스테이지 번호 (우상단)
-  ctx.fillStyle='rgba(0,0,0,0.35)';
-  ctx.fillRect(CW-110,50,105,22);
-
-  // 진행 바 (하단)
-  ctx.fillStyle='rgba(0,0,0,0.3)'; ctx.fillRect(0,CH-4,CW,4);
-  ctx.fillStyle='#FFD700';         ctx.fillRect(0,CH-4,(G.stageIdx+(G.stage.solved?1:0))/5*CW,4);
-
-  // 파이프 안내
-  if(!S.solved){
-    ctx.fillStyle='#FFD700';
-    ctx.font='bold 11px monospace'; ctx.textAlign='center';
-    ctx.fillText('블럭을 맞혀야 파이프가 열려요!',CW/2,30);
-    ctx.textAlign='left';
-  }
-}
-
-function drawClouds(){
-  const cls=[{x:80,y:55,r:45},{x:300,y:42,r:35},{x:540,y:62,r:50},{x:720,y:48,r:38}];
-  ctx.fillStyle='rgba(255,255,255,0.85)';
-  cls.forEach(cl=>{
-    ctx.beginPath();ctx.arc(cl.x,cl.y,cl.r,0,6.28);ctx.fill();
-    ctx.beginPath();ctx.arc(cl.x+cl.r*.7,cl.y+9,cl.r*.62,0,6.28);ctx.fill();
-    ctx.beginPath();ctx.arc(cl.x-cl.r*.6,cl.y+10,cl.r*.52,0,6.28);ctx.fill();
-  });
-}
-
-function drawPipe(pp,open){
-  // 몸통
-  ctx.fillStyle=open?'#239B56':'#1A5276';
-  ctx.fillRect(pp.x+5,pp.y+24,pp.w-10,pp.h-24);
-  // 입구
-  ctx.fillStyle=open?'#2ECC71':'#2E86C1';
-  ctx.fillRect(pp.x,pp.y,pp.w,26);
-  // 하이라이트
-  ctx.fillStyle='rgba(255,255,255,0.15)';
-  ctx.fillRect(pp.x+8,pp.y+2,10,pp.h-4);
-  // 아이콘
-  ctx.font='18px monospace'; ctx.textAlign='center';
-  ctx.fillText(open?'▼':'🔒',pp.x+pp.w/2,pp.y+pp.h/2+8);
-  if(!open){
-    ctx.fillStyle='#FFD700';
-    ctx.font='bold 10px monospace';
-    ctx.fillText('정답 맞히면 열림!',pp.x+pp.w/2,pp.y-10);
-  }
-  ctx.textAlign='left';
-}
-
-function drawBlock(bl){
-  const sx=bl.shake>0?(Math.random()*6-3):0;
-  // 블럭 본체
-  ctx.fillStyle=bl.col;
-  ctx.fillRect(bl.x+sx,bl.y,bl.w,bl.h);
-  ctx.strokeStyle='rgba(0,0,0,0.3)'; ctx.lineWidth=2;
-  ctx.strokeRect(bl.x+sx,bl.y,bl.w,bl.h);
-  // 하이라이트
-  ctx.fillStyle='rgba(255,255,255,0.2)';
-  ctx.fillRect(bl.x+sx,bl.y,bl.w,5);
-  // 텍스트
-  ctx.fillStyle='#fff';
-  ctx.font='bold 11px Apple SD Gothic Neo,sans-serif';
-  ctx.textAlign='center';
-  const Q=QUESTIONS[bl.qi];
-  const prefix=bl.hit?'':(bl.ci===0?'①':bl.ci===1?'②':'③')+' ';
-  const label=bl.hit?(bl.col==='#DAA520'?'✓ 정답!':'✗'):prefix+Q.c[bl.ci];
-  // 줄바꿈
-  const mw=bl.w-12;
-  let line='',lines=[];
-  for(const ch of label){
-    if(ctx.measureText(line+ch).width>mw){lines.push(line);line=ch;}
-    else line+=ch;
-  }
-  if(line)lines.push(line);
-  lines=lines.slice(0,3);
-  const sy=bl.y+bl.h/2-(lines.length-1)*7+3;
-  lines.forEach((l,i)=>ctx.fillText(l,bl.x+sx+bl.w/2,sy+i*14));
-  ctx.textAlign='left';
-}
-
-function drawPlayer(P){
-  ctx.save();
-  if(P.dir===-1){ctx.translate(P.x+P.w,P.y);ctx.scale(-1,1);}
-  else ctx.translate(P.x,P.y);
-  const w=P.w;
-  // 다리 애니메이션
-  const legOff=[0,3,0,-3][P.animFrame];
-  // 모자
-  ctx.fillStyle='#E52521'; ctx.fillRect(2,0,w-4,9); ctx.fillRect(4,7,w-8,5);
-  // 얼굴
-  ctx.fillStyle='#F5CBA7'; ctx.fillRect(5,10,w-10,12);
-  // 눈
-  ctx.fillStyle='#000'; ctx.fillRect(11,13,3,3);
-  // 콧수염
-  ctx.fillStyle='#5D4037'; ctx.fillRect(6,19,w-12,3);
-  // 셔츠
-  ctx.fillStyle='#E52521'; ctx.fillRect(3,22,w-6,12);
-  // 바지
-  ctx.fillStyle='#2471A3'; ctx.fillRect(3,32,w-6,13);
-  // 손
-  ctx.fillStyle='#F5CBA7'; ctx.fillRect(0,24,5,6);ctx.fillRect(w-5,24,5,6);
-  // 신발 (애니)
-  ctx.fillStyle='#5D4037';
-  ctx.fillRect(1+legOff,44,12,8); ctx.fillRect(w-13-legOff,44,12,8);
-  ctx.restore();
-}
-
-// ══════════════════════════════════════════════
-// 문제 오버레이 (오답 해설)
-// ══════════════════════════════════════════════
-function showWrong(qi,Q){
-  G.paused=true;
-  document.getElementById('qNum').textContent=`문제 ${qi+1}/5 — 오답 해설`;
+// ── 문제 표시 ─────────────────────────────────
+function showQuestion(){
+  answered=false;
+  const Q=QS[qIdx];
+  document.getElementById('qNum').textContent=`Q${qIdx+1}/5`;
   document.getElementById('qText').textContent=Q.t;
-  document.getElementById('qSub').textContent=Q.s;
-  document.getElementById('qFb').textContent='✗ 오답!  정답: '+Q.c[Q.a]+'  |  '+Q.e;
-  document.getElementById('qFb').style.color='#FF8C00';
-  document.getElementById('qBar').style.width='0';
-  const ch=document.getElementById('qChoices');
+  document.getElementById('qHint').textContent=Q.h;
+  document.getElementById('feedback').style.display='none';
+  document.getElementById('nextBtn').style.display='none';
+
+  // 보기 생성
+  const ch=document.getElementById('choices');
   ch.innerHTML='';
   Q.c.forEach((txt,i)=>{
     const btn=document.createElement('button');
-    btn.className='cbtn'+(i===Q.a?' ok':'');
-    btn.textContent=(i===0?'① ':i===1?'② ':'③ ')+txt;
-    btn.disabled=true; ch.appendChild(btn);
+    btn.className=`choice choice-${i}`;
+    btn.innerHTML=`<span class="choice-icon">${ICONS[i]}</span><span>${txt}</span>`;
+    btn.onclick=()=>answer(i,btn);
+    ch.appendChild(btn);
   });
-  document.getElementById('ui-q').classList.remove('hidden');
-  setTimeout(()=>{
-    document.getElementById('ui-q').classList.add('hidden');
-    G.paused=false;
-    if(G.lives<=0)triggerGameover();
-  },2500);
+
+  updateHUD();
+  startTimer();
 }
 
-// ══════════════════════════════════════════════
-// 유틸
-// ══════════════════════════════════════════════
-function rectHit(a,b){
-  return a.x<b.x+b.w&&a.x+a.w>b.x&&a.y<b.y+b.h&&a.y+a.h>b.y;
+// ── 타이머 ────────────────────────────────────
+function startTimer(){
+  clearInterval(timerInt);
+  timerVal=TIMER_MAX;
+  updateTimerBar();
+  timerInt=setInterval(()=>{
+    timerVal-=0.1;
+    updateTimerBar();
+    if(timerVal<=0){clearInterval(timerInt);timeOut();}
+  },100);
 }
-function circRectHit(c,r){
-  const nx=Math.max(r.x,Math.min(c.x,r.x+r.w));
-  const ny=Math.max(r.y,Math.min(c.y,r.y+r.h));
-  return(c.x-nx)**2+(c.y-ny)**2<c.r**2;
+
+function updateTimerBar(){
+  const pct=Math.max(0,timerVal/TIMER_MAX*100);
+  const bar=document.getElementById('timerBar');
+  bar.style.width=pct+'%';
+  bar.style.background=pct>60?'#FFD700':pct>30?'#FF8C00':'#E52521';
+  document.getElementById('timerTxt').textContent=Math.ceil(timerVal);
+  document.getElementById('timerTxt').style.color=pct>30?'#FFD700':'#E52521';
 }
-function spawnPopup(text,x,y,col){
-  const el=document.createElement('div');
-  el.className='spop pxf';
-  el.style.cssText=`left:${x}px;top:${y+40}px;color:${col}`;
-  el.textContent=text;
-  document.getElementById('game-container').appendChild(el);
-  setTimeout(()=>el.remove(),920);
+
+function timeOut(){
+  if(answered)return;
+  answered=true;
+  disableChoices();
+  const Q=QS[qIdx];
+  markCorrect(Q.a);
+  showFeedback(false,'⏰ 시간 초과!  정답: '+Q.c[Q.a]+'  |  '+Q.e);
+  setTimeout(nextQuestion,2000);
 }
-function spawnParticles(x,y,col){
-  const cols=[col,'#fff','#FFD700','#FF8C00'];
-  for(let i=0;i<16;i++){
-    G.particles.push({x,y,vx:(Math.random()-.5)*7,vy:Math.random()*-7-1,
-      sz:3+Math.random()*4,col:cols[i%cols.length],life:28,maxL:28});
+
+// ── 답변 처리 ─────────────────────────────────
+function answer(ci, btn){
+  if(answered)return;
+  answered=true;
+  clearInterval(timerInt);
+  disableChoices();
+
+  const Q=QS[qIdx];
+  const ok=(ci===Q.a);
+  const timeBonus=Math.round(timerVal/TIMER_MAX*300);
+
+  if(ok){
+    btn.classList.add('correct');
+    correct++;
+    const gained=200+timeBonus;
+    score+=gained;
+    coins+=Math.ceil(timerVal/3);
+    showFeedback(true,`✓ 정답!  +${gained}점  (타이머 보너스 +${timeBonus})\n${Q.e}`);
+    spawnCoins(btn);
+  } else {
+    btn.classList.add('wrong');
+    markCorrect(Q.a);
+    score=Math.max(0,score-100);
+    showFeedback(false,`✗ 오답  -100점  |  정답: ${Q.c[Q.a]}\n${Q.e}`);
   }
-}
-function loseLife(){
-  G.lives--; updateHUD();
-  if(G.lives<=0){triggerGameover();return;}
-  G.player.x=60; G.player.y=GY-80; G.player.vx=0; G.player.vy=0;
-}
-function updateHUD(){
-  document.getElementById('hScore').textContent=G.score.toLocaleString();
-  document.getElementById('hCoins').textContent='🪙'+G.coins;
-  document.getElementById('hStage').textContent=(G.stageIdx+1)+'/5';
-  document.getElementById('hLives').textContent='❤️'.repeat(Math.max(0,G.lives));
+  updateHUD();
+  document.getElementById('nextBtn').style.display='block';
 }
 
-// ══════════════════════════════════════════════
-// 게임오버 / 클리어
-// ══════════════════════════════════════════════
-function triggerGameover(){
-  G.paused=true;
-  document.getElementById('ui-over').classList.remove('hidden');
-  document.getElementById('overMsg').textContent='SCORE: '+G.score.toLocaleString();
+function disableChoices(){
+  document.querySelectorAll('.choice').forEach(b=>b.disabled=true);
 }
-function triggerClear(){
-  G.paused=true;
-  document.getElementById('pipe-transition').classList.remove('fade-in');
-  const tot=0, got=G.coins;
-  document.getElementById('clearStat').innerHTML=`
-    <div class="crow"><span>이름</span><span>${pName} (${pId})</span></div>
-    <div class="crow"><span>최종 점수</span><span>${G.score.toLocaleString()}</span></div>
-    <div class="crow"><span>코인</span><span>${G.coins}개</span></div>
-    <div class="crow"><span>남은 목숨</span><span>${G.lives}</span></div>`;
-  document.getElementById('ui-clear').classList.remove('hidden');
+function markCorrect(ai){
+  document.querySelectorAll('.choice')[ai]?.classList.add('correct');
+}
+
+function showFeedback(ok, msg){
+  const fb=document.getElementById('feedback');
+  fb.className='feedback '+(ok?'ok':'ng');
+  fb.textContent=msg;
+  fb.style.display='block';
+}
+
+// ── 다음 문제 / 결과 ──────────────────────────
+function nextQuestion(){
+  qIdx++;
+  if(qIdx>=QS.length){ showResult(); return; }
+  showQuestion();
+}
+
+function showResult(){
+  document.getElementById('scr-game').style.display='none';
+  document.getElementById('hud').style.display='none';
+  document.getElementById('scr-result').style.display='block';
+
+  const pct=correct/QS.length;
+  let rank='',title='';
+  if(pct===1)     {rank='🏆';title='완벽해요!\n만점 달성!';}
+  else if(pct>=0.8){rank='⭐';title='훌륭해요!\n거의 다 맞혔어요!';}
+  else if(pct>=0.6){rank='🍄';title='잘 했어요!\n조금 더 연습!';}
+  else             {rank='🌸';title='다시 도전!\n탐구 내용을 복습해봐요';}
+
+  document.getElementById('resultRank').textContent=rank;
+  document.getElementById('resultTitle').textContent=title;
+  document.getElementById('resultStats').innerHTML=`
+    <div class="stat-row"><span>이름</span><span>${pName} (${pId})</span></div>
+    <div class="stat-row"><span>최종 점수</span><span>${score.toLocaleString()}점</span></div>
+    <div class="stat-row"><span>정답 수</span><span>${correct} / ${QS.length}</span></div>
+    <div class="stat-row"><span>획득 코인</span><span>🪙 ${coins}</span></div>`;
+
   if(fbDB){
     document.getElementById('saveMsg').textContent='점수 저장 중...';
     fbDB.ref('quiz_scores').push({
-      name:pName,studentId:pId,score:G.score,coins:G.coins,lives:G.lives,time:Date.now()
+      name:pName, studentId:pId, score, correct, coins,
+      total:QS.length, time:Date.now()
     }).then(()=>document.getElementById('saveMsg').textContent='✓ 점수 저장 완료!')
       .catch(()=>document.getElementById('saveMsg').textContent='저장 실패');
+  }
+}
+
+// ── HUD 업데이트 ──────────────────────────────
+function updateHUD(){
+  document.getElementById('hScore').textContent=score.toLocaleString();
+  document.getElementById('hCoins').textContent='🪙 '+coins;
+  document.getElementById('hCorrect').textContent=correct+'/'+qIdx;
+}
+
+// ── 코인 파티클 ───────────────────────────────
+function spawnCoins(btn){
+  const rect=btn.getBoundingClientRect();
+  const cx=rect.left+rect.width/2, cy=rect.top+rect.height/2;
+  for(let i=0;i<5;i++){
+    const el=document.createElement('div');
+    el.className='coin-pop';
+    el.textContent='🪙';
+    el.style.cssText=`left:${cx-10+(Math.random()-0.5)*60}px;top:${cy}px;
+      animation-delay:${i*0.08}s`;
+    document.body.appendChild(el);
+    setTimeout(()=>el.remove(),1000);
   }
 }
 </script>
