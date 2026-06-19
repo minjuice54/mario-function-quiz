@@ -6,116 +6,161 @@
 <title>일차함수 마리오 퀴즈</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
-*{box-sizing:border-box;margin:0;padding:0}
-html,body{width:100%;height:100%;overflow:hidden;background:#1a1a2e;user-select:none;font-family:'Apple SD Gothic Neo',sans-serif}
-canvas{display:block;outline:none}
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#000;display:flex;flex-direction:column;align-items:center;
+  justify-content:center;height:100vh;overflow:hidden;font-family:'Apple SD Gothic Neo',sans-serif}
+#game-container{position:relative;width:800px;max-width:100vw}
+canvas{display:block;width:100%;image-rendering:pixelated}
 
-.screen{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;
-  justify-content:center;background:#1a1a2e;z-index:200;gap:14px}
-.px{font-family:'Press Start 2P',monospace}
-.title{font-size:20px;color:#FFD700;text-shadow:3px 3px #7d5a00;line-height:1.7;text-align:center}
-.sub{font-size:9px;color:#ccc;text-align:center;line-height:2.2}
-.px-btn{font-size:11px;padding:13px 26px;background:#E52521;color:#fff;border:none;
-  border-radius:4px;cursor:pointer;box-shadow:0 4px #8B1210;margin-top:6px;font-family:'Press Start 2P',monospace}
+/* 오버레이 공통 */
+.overlay{position:absolute;inset:0;display:flex;flex-direction:column;
+  align-items:center;justify-content:center;gap:14px;padding:20px;z-index:10}
+.hidden{display:none!important}
+.pxf{font-family:'Press Start 2P',monospace}
+
+/* 시작/종료/클리어 */
+#ui-start,#ui-over,#ui-clear{background:rgba(0,0,0,0.92);border:3px solid #FFD700;border-radius:12px;
+  position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;
+  justify-content:center;gap:14px;padding:24px;z-index:20}
+.title{font-family:'Press Start 2P',monospace;font-size:18px;color:#FFD700;
+  text-shadow:3px 3px #7d5a00;line-height:1.7;text-align:center}
+.sub{font-family:'Press Start 2P',monospace;font-size:8px;color:#ccc;
+  text-align:center;line-height:2.2}
+.px-btn{font-family:'Press Start 2P',monospace;font-size:11px;padding:12px 24px;
+  background:#E52521;color:#fff;border:none;border-radius:4px;cursor:pointer;
+  box-shadow:0 4px #8B1210;transition:transform .1s}
 .px-btn:active{transform:translateY(3px);box-shadow:0 1px #8B1210}
-.px-input{font-size:11px;padding:10px 14px;background:#000;color:#FFD700;
-  border:2px solid #FFD700;border-radius:4px;text-align:center;outline:none;
-  width:200px;font-family:'Press Start 2P',monospace}
+.px-input{font-family:'Press Start 2P',monospace;font-size:10px;padding:10px 12px;
+  background:#000;color:#FFD700;border:2px solid #FFD700;border-radius:4px;
+  text-align:center;outline:none;width:190px}
 .px-input::placeholder{color:#444}
 
-#hud{position:fixed;top:0;left:0;right:0;height:46px;background:#111;
-  display:none;align-items:center;justify-content:space-around;z-index:100;
-  border-bottom:2px solid #333}
-.hi{display:flex;flex-direction:column;align-items:center;gap:2px}
-.hl{font-family:'Press Start 2P',monospace;font-size:7px;color:#888}
-.hv{font-family:'Press Start 2P',monospace;font-size:11px;color:#FFD700}
+/* HUD */
+#hud{position:absolute;top:0;left:0;right:0;height:40px;background:#111;
+  display:flex;align-items:center;justify-content:space-around;
+  border-bottom:2px solid #333;z-index:5}
+.hi{display:flex;flex-direction:column;align-items:center;gap:1px}
+.hl{font-family:'Press Start 2P',monospace;font-size:6px;color:#888}
+.hv{font-family:'Press Start 2P',monospace;font-size:10px;color:#FFD700}
 
-#qOverlay{position:fixed;inset:0;background:rgba(0,0,0,0.93);z-index:150;
-  display:none;flex-direction:column;align-items:center;justify-content:center;gap:10px;padding:16px}
-.qtw{width:100%;max-width:520px;height:10px;background:#333;border-radius:5px;overflow:hidden}
+/* 문제 오버레이 */
+#ui-q{position:absolute;inset:0;background:rgba(0,0,0,0.94);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:10px;padding:16px;z-index:15}
+.qtw{width:100%;max-width:500px;height:8px;background:#333;border-radius:4px;overflow:hidden}
 .qtb{height:100%;background:#FFD700;transition:width .08s linear}
-.qbox{background:#16213e;border:3px solid #FFD700;border-radius:12px;
-  padding:18px 22px;max-width:520px;width:100%;text-align:center}
-.qn{font-family:'Press Start 2P',monospace;font-size:8px;color:#888;margin-bottom:8px}
-.qt2{font-size:17px;font-weight:700;color:#fff;line-height:1.6;margin-bottom:4px}
-.qs{font-size:13px;color:#aaa}
-.cbtn{font-size:14px;font-weight:600;padding:12px 16px;background:#1a1a2e;color:#fff;
-  border:2px solid #534AB7;border-radius:10px;cursor:pointer;text-align:left;
-  width:100%;max-width:520px;font-family:inherit}
-.cbtn:hover{background:#534AB7}
+.qbox{background:#16213e;border:3px solid #FFD700;border-radius:10px;
+  padding:16px 20px;max-width:500px;width:100%;text-align:center}
+.qnum{font-family:'Press Start 2P',monospace;font-size:7px;color:#888;margin-bottom:8px}
+.qtext{font-size:16px;font-weight:700;color:#fff;line-height:1.6;margin-bottom:4px}
+.qsub{font-size:12px;color:#aaa}
+.cbtn{font-size:13px;font-weight:600;padding:11px 14px;background:#1a1a2e;color:#fff;
+  border:2px solid #534AB7;border-radius:8px;cursor:pointer;text-align:left;
+  width:100%;max-width:500px;font-family:inherit;transition:background .1s}
+.cbtn:hover,.cbtn:active{background:#534AB7}
 .cbtn.ok{background:#1D9E75!important;border-color:#9FE1CB!important}
 .cbtn.ng{background:#D85A30!important;border-color:#F0997B!important}
-.qfb{font-family:'Press Start 2P',monospace;font-size:9px;text-align:center;min-height:20px;color:#fff}
+.qfb{font-family:'Press Start 2P',monospace;font-size:8px;text-align:center;
+  min-height:18px;color:#fff;max-width:500px;line-height:1.6}
 
-.spop{position:fixed;pointer-events:none;z-index:180;
-  font-family:'Press Start 2P',monospace;font-size:11px;
-  animation:fup .85s ease-out forwards}
-@keyframes fup{0%{opacity:1;transform:translateY(0)}100%{opacity:0;transform:translateY(-55px)}}
+/* 점수 팝업 */
+.spop{position:absolute;font-family:'Press Start 2P',monospace;font-size:10px;
+  pointer-events:none;z-index:18;animation:fup .9s ease-out forwards}
+@keyframes fup{0%{opacity:1;transform:translateY(0)}100%{opacity:0;transform:translateY(-50px)}}
 
-.mbtn{position:fixed;bottom:18px;z-index:120;width:62px;height:62px;
-  background:rgba(255,255,255,0.18);border-radius:50%;
-  border:2px solid rgba(255,255,255,0.35);
-  display:flex;align-items:center;justify-content:center;
-  font-size:22px;touch-action:none;-webkit-tap-highlight-color:transparent}
+/* 모바일 버튼 */
+#mobile-btns{position:absolute;bottom:8px;left:0;right:0;
+  display:flex;justify-content:space-between;padding:0 12px;z-index:8;pointer-events:none}
+.mrow{display:flex;gap:8px;pointer-events:auto}
+.mbtn{width:56px;height:56px;background:rgba(255,255,255,0.15);border-radius:50%;
+  border:2px solid rgba(255,255,255,0.3);display:flex;align-items:center;
+  justify-content:center;font-size:18px;cursor:pointer;touch-action:none;
+  -webkit-tap-highlight-color:transparent;user-select:none}
 .mbtn:active{background:rgba(255,255,255,0.35)}
 
-.cstat{background:#16213e;border:2px solid #FFD700;border-radius:10px;padding:14px 22px;min-width:270px}
+/* 파이프 입장 트랜지션 */
+#pipe-transition{position:absolute;inset:0;background:#000;opacity:0;
+  pointer-events:none;z-index:12;transition:opacity 0.4s}
+#pipe-transition.fade-in{opacity:1}
+
+/* 클리어 통계 */
+.cstat{background:#16213e;border:2px solid #FFD700;border-radius:8px;
+  padding:12px 20px;min-width:260px}
 .crow{font-family:'Press Start 2P',monospace;font-size:8px;color:#ccc;
-  padding:6px 0;display:flex;justify-content:space-between;gap:16px;
+  padding:5px 0;display:flex;justify-content:space-between;gap:14px;
   border-bottom:1px solid #2a2a4e}
 .crow:last-child{border-bottom:none}
 .crow span:last-child{color:#FFD700}
 </style>
 </head>
 <body>
-
-<div class="screen" id="scrStart">
-  <div class="px title">📐 일차함수<br>마리오 퀴즈!</div>
-  <div class="px sub">← → 로 이동, ↑ / Space 로 점프<br>정답 블럭 밑에서 점프해서 맞혀라!<br>파이프에 들어가면 다음 문제 이동 🪙</div>
-  <input class="px-input" id="inName" placeholder="이름 입력" maxlength="10">
-  <input class="px-input" id="inId"   placeholder="학번 입력" maxlength="10" style="margin-top:-6px">
-  <button class="px-btn" onclick="startGame()">▶ START</button>
-</div>
-
-<div class="screen" id="scrOver" style="display:none">
-  <div class="px title" style="color:#E52521">GAME OVER</div>
-  <div class="px sub" id="goMsg"></div>
-  <button class="px-btn" onclick="location.reload()">↺ 다시하기</button>
-</div>
-
-<div class="screen" id="scrClear" style="display:none">
-  <div class="px title" style="color:#FFD700">🎉 CLEAR!</div>
-  <div class="cstat" id="clearStat"></div>
-  <div class="px sub" id="saveMsg" style="font-size:8px;color:#aaa;margin-top:4px"></div>
-  <button class="px-btn" onclick="location.reload()">↺ 다시하기</button>
-</div>
-
-<div id="hud">
-  <div class="hi"><span class="hl">SCORE</span><span class="hv" id="hScore">0</span></div>
-  <div class="hi"><span class="hl">COINS</span><span class="hv" id="hCoins">🪙0</span></div>
-  <div class="hi"><span class="hl">CLEAR</span><span class="hv" id="hQ">0/5</span></div>
-  <div class="hi"><span class="hl">LIVES</span><span class="hv" id="hLives">❤️❤️❤️</span></div>
-</div>
-
-<canvas id="c" tabindex="0"></canvas>
-
-<div id="qOverlay">
-  <div class="qtw"><div class="qtb" id="qBar"></div></div>
-  <div class="qbox">
-    <div class="qn" id="qN"></div>
-    <div class="qt2" id="qT"></div>
-    <div class="qs" id="qS"></div>
+<div id="game-container">
+  <!-- HUD -->
+  <div id="hud">
+    <div class="hi"><span class="hl">SCORE</span><span class="hv" id="hScore">0</span></div>
+    <div class="hi"><span class="hl">COINS</span><span class="hv" id="hCoins">🪙0</span></div>
+    <div class="hi"><span class="hl">STAGE</span><span class="hv" id="hStage">1/5</span></div>
+    <div class="hi"><span class="hl">LIVES</span><span class="hv" id="hLives">❤️❤️❤️</span></div>
   </div>
-  <div id="qChoices" style="display:flex;flex-direction:column;gap:8px;width:100%;max-width:520px"></div>
-  <div class="qfb" id="qFb"></div>
-</div>
 
-<div class="mbtn" id="btnL" style="left:14px">◀</div>
-<div class="mbtn" id="btnR" style="left:86px">▶</div>
-<div class="mbtn" id="btnJ" style="right:14px">🅐</div>
+  <!-- 게임 캔버스 -->
+  <canvas id="c" width="800" height="480"></canvas>
+
+  <!-- 파이프 트랜지션 -->
+  <div id="pipe-transition"></div>
+
+  <!-- 시작 화면 -->
+  <div id="ui-start">
+    <div class="title">📐 일차함수<br>마리오 퀴즈!</div>
+    <div class="sub">← → 이동 &nbsp; ↑/Space 점프<br>정답 블럭 밑에서 점프해 맞혀라!<br>파이프로 다음 스테이지 이동 🪙</div>
+    <input class="px-input" id="inName" placeholder="이름 입력" maxlength="10">
+    <input class="px-input" id="inId" placeholder="학번 입력" maxlength="10">
+    <button class="px-btn" id="btnStart">▶ START</button>
+  </div>
+
+  <!-- 게임오버 -->
+  <div id="ui-over" class="hidden">
+    <div class="title" style="color:#E52521">GAME<br>OVER</div>
+    <div class="sub" id="overMsg"></div>
+    <button class="px-btn" onclick="location.reload()">↺ 다시하기</button>
+  </div>
+
+  <!-- 클리어 -->
+  <div id="ui-clear" class="hidden">
+    <div class="title" style="color:#FFD700">🎉 CLEAR!</div>
+    <div class="cstat" id="clearStat"></div>
+    <div class="sub" id="saveMsg" style="font-size:7px;color:#aaa"></div>
+    <button class="px-btn" onclick="location.reload()">↺ 다시하기</button>
+  </div>
+
+  <!-- 문제 오버레이 -->
+  <div id="ui-q" class="hidden">
+    <div class="qtw"><div class="qtb" id="qBar" style="width:100%"></div></div>
+    <div class="qbox">
+      <div class="qnum" id="qNum"></div>
+      <div class="qtext" id="qText"></div>
+      <div class="qsub" id="qSub"></div>
+    </div>
+    <div id="qChoices" style="display:flex;flex-direction:column;gap:8px;width:100%;max-width:500px"></div>
+    <div class="qfb" id="qFb"></div>
+  </div>
+
+  <!-- 모바일 버튼 -->
+  <div id="mobile-btns">
+    <div class="mrow">
+      <div class="mbtn" id="btnL">◀</div>
+      <div class="mbtn" id="btnR">▶</div>
+    </div>
+    <div class="mrow">
+      <div class="mbtn" id="btnJ">🅐</div>
+    </div>
+  </div>
+</div>
 
 <script>
-// ── Firebase ──────────────────────────────────
+// ══════════════════════════════════════════════
+// Firebase
+// ══════════════════════════════════════════════
 const FBC={
   apiKey:"AIzaSyD79uao_j3-MLp7712PlGNT6CFje0zmZWw",
   authDomain:"functionproject-85177.firebaseapp.com",
@@ -138,469 +183,581 @@ let fbDB=null;
   document.head.appendChild(s1);
 })();
 
-// ── 문제 ─────────────────────────────────────
-const QS=[
-  {t:"y = 3x + 1 의 그래프는 어느 방향?",
+// ══════════════════════════════════════════════
+// 문제 데이터
+// ══════════════════════════════════════════════
+const QUESTIONS=[
+  {t:"y = 3x + 1 의 그래프 방향은?",
    s:"기울기 a = 3의 부호를 보세요",
    c:["오른쪽 위로 향한다","오른쪽 아래로 향한다","수평선이다"],a:0,
-   e:"a=3>0 → 오른쪽 위로 향합니다!"},
+   e:"a=3>0 이므로 오른쪽 위!"},
   {t:"y = −2x + 5 에서 x가 커지면 y는?",
    s:"기울기 a = −2를 생각해보세요",
    c:["y도 커진다","y는 작아진다","y는 변하지 않는다"],a:1,
-   e:"a<0 → x증가 시 y는 감소!"},
+   e:"a<0 이므로 x증가 → y감소!"},
   {t:"y=2x+3 과 y=2x−1 의 관계는?",
    s:"기울기가 같을 때 두 직선은?",
    c:["서로 평행하다","한 점에서 만난다","완전히 일치한다"],a:0,
    e:"기울기 같고 y절편 다름 → 평행!"},
   {t:"기울기 −½ 인 그래프 모양은?",
-   s:"|a|크기와 방향을 함께 생각해요",
+   s:"|a| 크기와 방향을 함께 생각해요",
    c:["완만하게 오른쪽 아래","가파르게 오른쪽 위","완만하게 오른쪽 위"],a:0,
-   e:"a<0→아래방향, |a|=½<1→완만"},
+   e:"a<0→아래방향, |a|<1→완만"},
   {t:"두 직선이 평행하려면?",
    s:"탐구2에서 발견한 규칙!",
    c:["기울기 같고 y절편이 달라야","기울기·y절편 모두 같아야","기울기가 달라야"],a:0,
    e:"기울기 같고 y절편 다를 때 → 평행!"}
 ];
 
-// ── 캔버스 ───────────────────────────────────
+// ══════════════════════════════════════════════
+// 캔버스 & 상수
+// ══════════════════════════════════════════════
 const cv=document.getElementById('c');
-const ct=cv.getContext('2d');
-const VW=window.innerWidth;
-const VH=window.innerHeight-46;
-cv.width=VW; cv.height=VH;
-cv.style.marginTop='46px';
-
-const GY=VH-60;
-const ZONE=Math.max(VW,700);
-const MAPW=ZONE*6+200;
-const GRAV=0.52, JMP=-13, SPD=4.5;
+const ctx=cv.getContext('2d');
+const CW=800, CH=480;
+const GY=CH-60;          // 지면 y좌표
+const GRAV=0.55, JF=-13, SPD=4;
+const TILE=48;
 const QTMAX=20;
 
-// ── 입력 상태 ─────────────────────────────────
-const K={left:false,right:false,up:false};
+// ══════════════════════════════════════════════
+// 입력
+// ══════════════════════════════════════════════
+const KEY={left:false,right:false,jump:false};
 
-// 키보드 — window에 붙임 (iframe 포커스 문제 방지)
-window.addEventListener('keydown',e=>{
-  if(e.code==='ArrowLeft'||e.code==='KeyA')  K.left=true;
-  if(e.code==='ArrowRight'||e.code==='KeyD') K.right=true;
+// 키보드 — document + window 둘 다
+function onKeyDown(e){
+  if(e.code==='ArrowLeft' ||e.code==='KeyA'){KEY.left=true;}
+  if(e.code==='ArrowRight'||e.code==='KeyD'){KEY.right=true;}
   if(e.code==='ArrowUp'||e.code==='Space'||e.code==='KeyW'){
-    K.up=true;
-    if(gameRunning&&!qActive&&P.gr){P.vy=JMP;P.gr=false;}
+    if(!KEY.jump){KEY.jump=true;doJump();}
     e.preventDefault();
   }
-},{passive:false});
-window.addEventListener('keyup',e=>{
-  if(e.code==='ArrowLeft'||e.code==='KeyA')  K.left=false;
-  if(e.code==='ArrowRight'||e.code==='KeyD') K.right=false;
-  if(e.code==='ArrowUp'||e.code==='Space'||e.code==='KeyW') K.up=false;
-});
-// 캔버스 클릭 시 포커스
+}
+function onKeyUp(e){
+  if(e.code==='ArrowLeft' ||e.code==='KeyA'){KEY.left=false;}
+  if(e.code==='ArrowRight'||e.code==='KeyD'){KEY.right=false;}
+  if(e.code==='ArrowUp'||e.code==='Space'||e.code==='KeyW'){KEY.jump=false;}
+}
+document.addEventListener('keydown',onKeyDown);
+document.addEventListener('keyup',  onKeyUp);
+window.addEventListener('keydown',  onKeyDown);
+window.addEventListener('keyup',    onKeyUp);
+cv.setAttribute('tabindex','0');
 cv.addEventListener('click',()=>cv.focus());
 
-// 모바일 버튼
-function bindMBtn(id, onDown, onUp){
+// 모바일
+function bindMobile(id,downFn,upFn){
   const el=document.getElementById(id);
-  ['touchstart','mousedown'].forEach(ev=>
-    el.addEventListener(ev,e=>{e.preventDefault();onDown();},{passive:false}));
-  ['touchend','touchcancel','mouseup','mouseleave'].forEach(ev=>
-    el.addEventListener(ev,e=>{e.preventDefault();if(onUp)onUp();},{passive:false}));
+  el.addEventListener('touchstart',e=>{e.preventDefault();downFn();},{passive:false});
+  el.addEventListener('touchend',  e=>{e.preventDefault();if(upFn)upFn();},{passive:false});
+  el.addEventListener('mousedown', e=>{e.preventDefault();downFn();},{passive:false});
+  el.addEventListener('mouseup',   e=>{e.preventDefault();if(upFn)upFn();},{passive:false});
 }
-bindMBtn('btnL',()=>K.left=true, ()=>K.left=false);
-bindMBtn('btnR',()=>K.right=true,()=>K.right=false);
-bindMBtn('btnJ',()=>{
-  if(gameRunning&&!qActive&&P.gr){P.vy=JMP;P.gr=false;}
-},null);
+bindMobile('btnL',()=>KEY.left=true, ()=>KEY.left=false);
+bindMobile('btnR',()=>KEY.right=true,()=>KEY.right=false);
+bindMobile('btnJ',()=>{doJump();},null);
 
-// ── 게임 상태 ─────────────────────────────────
-let pName='',pId='';
-let score=0,coins=0,lives=3,solved=0;
-let solvedSet=new Set();
-let camX=0,qActive=false,qInt=null,qTimer=0;
-let gameRunning=false;
-let P={},plats=[],coinObjs=[],pipeObjs=[],blockObjs=[],parts=[];
-
-function startGame(){
-  pName=document.getElementById('inName').value.trim()||'학생';
-  pId  =document.getElementById('inId').value.trim()||'000';
-  document.getElementById('scrStart').style.display='none';
-  document.getElementById('hud').style.display='flex';
-  initGame();
-}
-
-function initGame(){
-  score=0;coins=0;lives=3;solved=0;
-  solvedSet.clear();camX=0;qActive=false;parts=[];
-  buildMap();
-  gameRunning=true;
-  updateHUD();
-  cv.focus();
-  requestAnimationFrame(tick);
-}
-
-// ── 맵 ───────────────────────────────────────
-function buildMap(){
-  P={x:80,y:GY-58,w:30,h:54,vx:0,vy:0,gr:false,dir:1};
-  plats=[{x:0,y:GY,w:MAPW,h:60,col:'#5D4E37'}];
-  coinObjs=[]; pipeObjs=[]; blockObjs=[];
-
-  for(let q=0;q<5;q++){
-    const ox=ZONE*(q+1);
-    // 발판 3개
-    plats.push({x:ox-160,y:GY-100,w:100,h:14,col:'#9B7722'});
-    plats.push({x:ox+20, y:GY-185,w:80, h:14,col:'#9B7722'});
-    plats.push({x:ox+180,y:GY-120,w:100,h:14,col:'#9B7722'});
-
-    // 코인
-    const cpos=[
-      [ox-150,GY-140],[ox-120,GY-140],[ox-90,GY-140],[ox-60,GY-140],
-      [ox+30, GY-225],[ox+60, GY-225],[ox+90, GY-225],
-      [ox+190,GY-160],[ox+230,GY-160]
-    ];
-    cpos.forEach(([cx2,cy2])=>coinObjs.push({x:cx2,y:cy2,r:9,got:false,ph:Math.random()*6.28}));
-
-    // 문제 블럭 3개
-    const ord=sh3(), by=GY-290;
-    const bc=['#C0392B','#1A5276','#1E8449'];
-    for(let b=0;b<3;b++){
-      blockObjs.push({x:ox-40+b*125,y:by,w:112,h:42,qi:q,ci:ord[b],col:bc[b],hit:false,shk:0});
-    }
-
-    // 파이프
-    pipeObjs.push({x:ox+ZONE-120,y:GY-92,w:58,h:92,qi:q});
+function doJump(){
+  if(G&&G.player&&G.player.onGround&&!G.paused){
+    G.player.vy=JF; G.player.onGround=false;
   }
 }
 
-function sh3(){
+// ══════════════════════════════════════════════
+// 스테이지 데이터 생성
+// ══════════════════════════════════════════════
+function makeStage(qi){
+  // 각 스테이지는 800×480 한 화면
+  const Q=QUESTIONS[qi];
+  const ord=shuffle3();
+  const stage={
+    qi,
+    bg: ['#5499D8','#4a8fc7','#3d7eb5','#6ab0e8','#487db5'][qi],
+    platforms:[
+      // 지면
+      {x:0,   y:GY,   w:CW,  h:60, type:'ground'},
+      // 발판들
+      {x:80,  y:GY-110,w:120,h:16, type:'brick'},
+      {x:280, y:GY-180,w:100,h:16, type:'brick'},
+      {x:480, y:GY-130,w:120,h:16, type:'brick'},
+    ],
+    // 문제 블럭 3개 (천장에 배치 — 밑에서 머리 박기)
+    blocks: ord.map((ci,i)=>({
+      x:100+i*220, y:GY-300, w:160, h:44,
+      ci, qi, hit:false, shake:0,
+      col:['#C0392B','#1A5276','#1E8449'][i]
+    })),
+    // 코인
+    coins:[
+      {x:130,y:GY-155},{x:175,y:GY-155},{x:220,y:GY-155},
+      {x:310,y:GY-225},{x:355,y:GY-225},
+      {x:520,y:GY-175},{x:565,y:GY-175},{x:610,y:GY-175},
+    ].map(c=>({...c,r:10,got:false,phase:Math.random()*6.28})),
+    // 파이프 (오른쪽 끝, 클리어 후 열림)
+    pipe:{x:700,y:GY-100,w:64,h:100},
+    solved:false,
+  };
+  return stage;
+}
+
+function shuffle3(){
   const a=[0,1,2];
   for(let i=2;i>0;i--){const j=0|Math.random()*(i+1);[a[i],a[j]]=[a[j],a[i]];}
   return a;
 }
 
-// ── 루프 ─────────────────────────────────────
-function tick(){
-  if(!gameRunning)return;
-  if(!qActive)update();
-  render();
-  requestAnimationFrame(tick);
+// ══════════════════════════════════════════════
+// 게임 객체 G
+// ══════════════════════════════════════════════
+let G=null;
+let pName='',pId='';
+let rafId=null;
+
+function startGame(){
+  pName=document.getElementById('inName').value.trim()||'학생';
+  pId  =document.getElementById('inId').value.trim()||'000';
+  document.getElementById('ui-start').classList.add('hidden');
+  cv.focus();
+  initGame();
+}
+document.getElementById('btnStart').addEventListener('click',startGame);
+document.getElementById('inId').addEventListener('keydown',e=>{if(e.code==='Enter')startGame();});
+
+function initGame(){
+  G={
+    score:0, coins:0, lives:3, stageIdx:0,
+    stage: makeStage(0),
+    player:{x:60,y:GY-80,w:32,h:52,vx:0,vy:0,onGround:false,dir:1,
+            animFrame:0,animTimer:0},
+    paused:false,
+    particles:[],
+    pipeEntering:false,
+  };
+  updateHUD();
+  if(rafId)cancelAnimationFrame(rafId);
+  rafId=requestAnimationFrame(loop);
 }
 
-// ── 업데이트 ──────────────────────────────────
-function update(){
+// ══════════════════════════════════════════════
+// 메인 루프
+// ══════════════════════════════════════════════
+let lastT=0;
+function loop(t){
+  rafId=requestAnimationFrame(loop);
+  const dt=Math.min((t-lastT)/16.67,3); lastT=t;
+  if(!G.paused) update(dt);
+  render();
+}
+
+// ══════════════════════════════════════════════
+// 업데이트
+// ══════════════════════════════════════════════
+function update(dt){
+  const P=G.player;
+  const S=G.stage;
+
   // 이동
-  if(K.left) {P.vx=-SPD; P.dir=-1;}
-  else if(K.right){P.vx= SPD; P.dir= 1;}
-  else P.vx*=0.65;
+  if(KEY.left) {P.vx=-SPD;P.dir=-1;}
+  else if(KEY.right){P.vx= SPD;P.dir= 1;}
+  else P.vx*=0.6;
 
   // 물리
-  P.vy=Math.min(P.vy+GRAV, 18);
-  P.x+=P.vx;
-  P.y+=P.vy;
-  P.x=Math.max(0,Math.min(MAPW-P.w,P.x));
-  P.gr=false;
+  P.vy=Math.min(P.vy+GRAV*dt,20);
+  P.x+=P.vx*dt;
+  P.y+=P.vy*dt;
+  P.x=Math.max(0,Math.min(CW-P.w,P.x));
+  P.onGround=false;
 
   // 플랫폼 충돌
-  for(const pl of plats){
-    if(!hit(P,pl))continue;
-    const oT=(P.y+P.h)-pl.y, oB=(pl.y+pl.h)-P.y;
-    const oL=(P.x+P.w)-pl.x, oR=(pl.x+pl.w)-P.x;
-    const mn=Math.min(oT,oB,oL,oR);
-    if(mn===oT&&P.vy>=0){P.y=pl.y-P.h;P.vy=0;P.gr=true;}
-    else if(mn===oB&&P.vy<0){P.y=pl.y+pl.h;P.vy=Math.abs(P.vy)*0.1;}
-    else if(mn===oL){P.x=pl.x-P.w;P.vx=0;}
-    else{P.x=pl.x+pl.w;P.vx=0;}
-  }
+  for(const pl of S.platforms) resolvePlatform(P,pl);
 
-  // 추락
-  if(P.y>VH+100){loseLife();return;}
-
-  // 코인
-  for(const co of coinObjs){
-    if(!co.got&&cHit(co,P)){
-      co.got=true;coins++;score+=50;
-      popup('+50',co.x-camX,co.y,'#FFD700');
-      updateHUD();
-    }
-    co.ph+=0.065;
-  }
-
-  // 문제 블럭 — 아래서 머리박기
-  for(const bl of blockObjs){
+  // 블럭 충돌
+  for(const bl of S.blocks){
     if(bl.hit)continue;
-    if(bl.shk>0)bl.shk--;
-    if(!hit(P,bl))continue;
+    if(bl.shake>0)bl.shake-=dt;
+    if(!rectHit(P,bl))continue;
     const oT=(P.y+P.h)-bl.y, oB=(bl.y+bl.h)-P.y;
     const oL=(P.x+P.w)-bl.x, oR=(bl.x+bl.w)-P.x;
     const mn=Math.min(oT,oB,oL,oR);
     if(mn===oB&&P.vy<0){
-      // 아래서 머리 박음
+      // 머리박기!
       P.vy=5; P.y=bl.y+bl.h+1;
       bl.hit=true;
-      processBlock(bl);
+      processBlock(bl,S);
       return;
-    } else if(mn===oT&&P.vy>=0){
-      P.y=bl.y-P.h;P.vy=0;P.gr=true;
-    } else if(mn===oL){P.x=bl.x-P.w;P.vx=0;}
+    } else if(mn===oT&&P.vy>=0){P.y=bl.y-P.h;P.vy=0;P.onGround=true;}
+    else if(mn===oL){P.x=bl.x-P.w;P.vx=0;}
     else{P.x=bl.x+bl.w;P.vx=0;}
   }
 
+  // 코인
+  for(const co of S.coins){
+    if(!co.got&&circRectHit(co,P)){
+      co.got=true; G.coins++; G.score+=50;
+      spawnPopup('+50',co.x,co.y,'#FFD700');
+      updateHUD();
+    }
+    co.phase+=0.06*dt;
+  }
+
   // 파이프
-  for(const pp of pipeObjs){
-    const pr={x:pp.x,y:pp.y,w:pp.w,h:pp.h};
-    if(!hit(P,pr))continue;
-    if(solvedSet.has(pp.qi)){
-      if(pp.qi===4){triggerClear();return;}
-      P.x=ZONE*(pp.qi+2)+80; P.y=GY-80; P.vx=0; P.vy=0;
-      camX=Math.max(0,Math.min(MAPW-VW,P.x-VW/3));
-      return;
-    } else {
-      // 막힌 파이프 밀기
-      const fromL=(P.x+P.w)-pp.x, fromR=(pp.x+pp.w)-P.x;
+  if(S.solved&&!G.pipeEntering){
+    const pp=S.pipe;
+    if(rectHit(P,{x:pp.x,y:pp.y,w:pp.w,h:pp.h})){
+      enterPipe();
+    }
+  } else if(!S.solved){
+    const pp=S.pipe;
+    // 파이프 막기
+    const fromL=(P.x+P.w)-pp.x, fromR=(pp.x+pp.w)-P.x;
+    if(rectHit(P,{x:pp.x,y:pp.y,w:pp.w,h:pp.h})){
       if(fromL<fromR){P.x=pp.x-P.w;}else{P.x=pp.x+pp.w;}
       P.vx=0;
     }
   }
 
-  // 카메라
-  const tgt=Math.max(0,Math.min(MAPW-VW,P.x-VW/3));
-  camX+=(tgt-camX)*0.14;
+  // 추락
+  if(P.y>CH+50){loseLife();return;}
 
   // 파티클
-  parts=parts.filter(p=>{p.x+=p.vx;p.y+=p.vy;p.vy+=0.2;p.life--;return p.life>0;});
+  G.particles=G.particles.filter(p=>{
+    p.x+=p.vx*dt; p.y+=p.vy*dt; p.vy+=0.2*dt; p.life-=dt;
+    return p.life>0;
+  });
+
+  // 플레이어 애니
+  if(Math.abs(P.vx)>0.5){
+    P.animTimer+=dt;
+    if(P.animTimer>5){P.animFrame=(P.animFrame+1)%4;P.animTimer=0;}
+  } else P.animFrame=0;
 }
 
-// ── 블럭 처리 ─────────────────────────────────
-function processBlock(bl){
-  const Q=QS[bl.qi], ok=(bl.ci===Q.a);
+function resolvePlatform(P,pl){
+  if(!rectHit(P,pl))return;
+  const oT=(P.y+P.h)-pl.y, oB=(pl.y+pl.h)-P.y;
+  const oL=(P.x+P.w)-pl.x, oR=(pl.x+pl.w)-P.x;
+  const mn=Math.min(oT,oB,oL,oR);
+  if(mn===oT&&P.vy>=0){P.y=pl.y-P.h;P.vy=0;P.onGround=true;}
+  else if(mn===oB&&P.vy<0){P.y=pl.y+pl.h;P.vy=Math.abs(P.vy)*0.2;}
+  else if(mn===oL){P.x=pl.x-P.w;P.vx=0;}
+  else{P.x=pl.x+pl.w;P.vx=0;}
+}
+
+// ══════════════════════════════════════════════
+// 블럭 판정
+// ══════════════════════════════════════════════
+function processBlock(bl,S){
+  const Q=QUESTIONS[bl.qi];
+  const ok=(bl.ci===Q.a);
   if(ok){
-    solvedSet.add(bl.qi); solved++;
-    blockObjs.filter(b=>b.qi===bl.qi).forEach(b=>{
-      b.hit=true; b.col=(b.ci===Q.a)?'#FFD700':'#555';
+    // 정답!
+    S.solved=true;
+    S.blocks.filter(b=>b.qi===bl.qi).forEach(b=>{
+      b.hit=true; b.col=(b.ci===Q.a)?'#DAA520':'#444';
     });
-    score+=200;
-    popup('+200 정답!',bl.x-camX+bl.w/2,bl.y,'#FFD700');
-    spawnParts(bl.x-camX+bl.w/2,bl.y);
+    G.score+=200;
+    spawnPopup('+200 정답!',bl.x+bl.w/2,bl.y,'#FFD700');
+    spawnParticles(bl.x+bl.w/2,bl.y,'#FFD700');
     updateHUD();
   } else {
-    bl.col='#555'; bl.shk=16;
-    score=Math.max(0,score-100); lives--;
-    popup('-100 오답!',bl.x-camX+bl.w/2,bl.y,'#E52521');
+    // 오답
+    bl.col='#444'; bl.shake=14;
+    G.score=Math.max(0,G.score-100); G.lives--;
+    spawnPopup('-100 오답!',bl.x+bl.w/2,bl.y,'#E52521');
     updateHUD();
-    if(lives<=0){setTimeout(triggerGameover,500);return;}
-    setTimeout(()=>showWrong(bl.qi,Q),350);
+    if(G.lives<=0){setTimeout(triggerGameover,400);return;}
+    // 오답 해설 표시
+    setTimeout(()=>showWrong(bl.qi,Q),300);
   }
 }
 
-// ── 오답 해설 오버레이 ───────────────────────────
+// ══════════════════════════════════════════════
+// 파이프 입장 (트랜지션 + 스테이지 전환)
+// ══════════════════════════════════════════════
+function enterPipe(){
+  G.pipeEntering=true;
+  G.paused=true;
+  // 플레이어를 파이프 안으로 이동
+  const P=G.player, pp=G.stage.pipe;
+  P.x=pp.x+(pp.w-P.w)/2;
+  P.vy=2; // 아래로 천천히
+
+  // 페이드 아웃
+  const trans=document.getElementById('pipe-transition');
+  trans.classList.add('fade-in');
+  setTimeout(()=>{
+    if(G.stageIdx>=4){
+      triggerClear(); return;
+    }
+    // 다음 스테이지
+    G.stageIdx++;
+    G.stage=makeStage(G.stageIdx);
+    G.player.x=60; G.player.y=GY-80;
+    G.player.vx=0; G.player.vy=0;
+    G.pipeEntering=false;
+    G.paused=false;
+    updateHUD();
+    // 페이드 인
+    setTimeout(()=>trans.classList.remove('fade-in'),100);
+  },500);
+}
+
+// ══════════════════════════════════════════════
+// 렌더링
+// ══════════════════════════════════════════════
+function render(){
+  if(!G)return;
+  const S=G.stage, P=G.player;
+
+  // 배경
+  ctx.fillStyle=S.bg;
+  ctx.fillRect(0,0,CW,CH-60);
+
+  // 구름
+  drawClouds();
+
+  // 지면
+  ctx.fillStyle='#4a7c3f'; ctx.fillRect(0,GY,CW,10);
+  ctx.fillStyle='#8B6050'; ctx.fillRect(0,GY+10,CW,50);
+  // 벽돌 패턴
+  ctx.strokeStyle='rgba(0,0,0,0.15)'; ctx.lineWidth=1;
+  for(let x=0;x<CW;x+=48){
+    for(let y=GY+10;y<CH;y+=16){
+      ctx.strokeRect(x+(y%32===0?24:0),y,48,16);
+    }
+  }
+
+  // 발판
+  for(const pl of S.platforms){
+    if(pl.type==='ground')continue;
+    ctx.fillStyle='#9B7722'; ctx.fillRect(pl.x,pl.y,pl.w,pl.h);
+    ctx.fillStyle='rgba(255,255,255,0.2)'; ctx.fillRect(pl.x,pl.y,pl.w,4);
+    ctx.fillStyle='rgba(0,0,0,0.2)'; ctx.fillRect(pl.x,pl.y+pl.h-3,pl.w,3);
+  }
+
+  // 파이프
+  drawPipe(S.pipe, S.solved);
+
+  // 문제 블럭
+  S.blocks.forEach(drawBlock);
+
+  // 코인
+  S.coins.forEach(co=>{
+    if(co.got)return;
+    const bob=Math.sin(co.phase)*3;
+    ctx.fillStyle='#FFD700';
+    ctx.beginPath(); ctx.arc(co.x,co.y+bob,co.r,0,6.28); ctx.fill();
+    ctx.fillStyle='#7d5a00';
+    ctx.font='bold 8px monospace'; ctx.textAlign='center';
+    ctx.fillText('$',co.x,co.y+bob+3); ctx.textAlign='left';
+  });
+
+  // 파티클
+  G.particles.forEach(p=>{
+    ctx.globalAlpha=Math.max(0,p.life/p.maxL);
+    ctx.fillStyle=p.col;
+    ctx.fillRect(p.x,p.y,p.sz,p.sz);
+  });
+  ctx.globalAlpha=1;
+
+  // 플레이어
+  drawPlayer(P);
+
+  // 스테이지 번호 (우상단)
+  ctx.fillStyle='rgba(0,0,0,0.35)';
+  ctx.fillRect(CW-110,50,105,22);
+
+  // 진행 바 (하단)
+  ctx.fillStyle='rgba(0,0,0,0.3)'; ctx.fillRect(0,CH-4,CW,4);
+  ctx.fillStyle='#FFD700';         ctx.fillRect(0,CH-4,(G.stageIdx+(G.stage.solved?1:0))/5*CW,4);
+
+  // 파이프 안내
+  if(!S.solved){
+    ctx.fillStyle='#FFD700';
+    ctx.font='bold 11px monospace'; ctx.textAlign='center';
+    ctx.fillText('블럭을 맞혀야 파이프가 열려요!',CW/2,30);
+    ctx.textAlign='left';
+  }
+}
+
+function drawClouds(){
+  const cls=[{x:80,y:55,r:45},{x:300,y:42,r:35},{x:540,y:62,r:50},{x:720,y:48,r:38}];
+  ctx.fillStyle='rgba(255,255,255,0.85)';
+  cls.forEach(cl=>{
+    ctx.beginPath();ctx.arc(cl.x,cl.y,cl.r,0,6.28);ctx.fill();
+    ctx.beginPath();ctx.arc(cl.x+cl.r*.7,cl.y+9,cl.r*.62,0,6.28);ctx.fill();
+    ctx.beginPath();ctx.arc(cl.x-cl.r*.6,cl.y+10,cl.r*.52,0,6.28);ctx.fill();
+  });
+}
+
+function drawPipe(pp,open){
+  // 몸통
+  ctx.fillStyle=open?'#239B56':'#1A5276';
+  ctx.fillRect(pp.x+5,pp.y+24,pp.w-10,pp.h-24);
+  // 입구
+  ctx.fillStyle=open?'#2ECC71':'#2E86C1';
+  ctx.fillRect(pp.x,pp.y,pp.w,26);
+  // 하이라이트
+  ctx.fillStyle='rgba(255,255,255,0.15)';
+  ctx.fillRect(pp.x+8,pp.y+2,10,pp.h-4);
+  // 아이콘
+  ctx.font='18px monospace'; ctx.textAlign='center';
+  ctx.fillText(open?'▼':'🔒',pp.x+pp.w/2,pp.y+pp.h/2+8);
+  if(!open){
+    ctx.fillStyle='#FFD700';
+    ctx.font='bold 10px monospace';
+    ctx.fillText('정답 맞히면 열림!',pp.x+pp.w/2,pp.y-10);
+  }
+  ctx.textAlign='left';
+}
+
+function drawBlock(bl){
+  const sx=bl.shake>0?(Math.random()*6-3):0;
+  // 블럭 본체
+  ctx.fillStyle=bl.col;
+  ctx.fillRect(bl.x+sx,bl.y,bl.w,bl.h);
+  ctx.strokeStyle='rgba(0,0,0,0.3)'; ctx.lineWidth=2;
+  ctx.strokeRect(bl.x+sx,bl.y,bl.w,bl.h);
+  // 하이라이트
+  ctx.fillStyle='rgba(255,255,255,0.2)';
+  ctx.fillRect(bl.x+sx,bl.y,bl.w,5);
+  // 텍스트
+  ctx.fillStyle='#fff';
+  ctx.font='bold 11px Apple SD Gothic Neo,sans-serif';
+  ctx.textAlign='center';
+  const Q=QUESTIONS[bl.qi];
+  const prefix=bl.hit?'':(bl.ci===0?'①':bl.ci===1?'②':'③')+' ';
+  const label=bl.hit?(bl.col==='#DAA520'?'✓ 정답!':'✗'):prefix+Q.c[bl.ci];
+  // 줄바꿈
+  const mw=bl.w-12;
+  let line='',lines=[];
+  for(const ch of label){
+    if(ctx.measureText(line+ch).width>mw){lines.push(line);line=ch;}
+    else line+=ch;
+  }
+  if(line)lines.push(line);
+  lines=lines.slice(0,3);
+  const sy=bl.y+bl.h/2-(lines.length-1)*7+3;
+  lines.forEach((l,i)=>ctx.fillText(l,bl.x+sx+bl.w/2,sy+i*14));
+  ctx.textAlign='left';
+}
+
+function drawPlayer(P){
+  ctx.save();
+  if(P.dir===-1){ctx.translate(P.x+P.w,P.y);ctx.scale(-1,1);}
+  else ctx.translate(P.x,P.y);
+  const w=P.w;
+  // 다리 애니메이션
+  const legOff=[0,3,0,-3][P.animFrame];
+  // 모자
+  ctx.fillStyle='#E52521'; ctx.fillRect(2,0,w-4,9); ctx.fillRect(4,7,w-8,5);
+  // 얼굴
+  ctx.fillStyle='#F5CBA7'; ctx.fillRect(5,10,w-10,12);
+  // 눈
+  ctx.fillStyle='#000'; ctx.fillRect(11,13,3,3);
+  // 콧수염
+  ctx.fillStyle='#5D4037'; ctx.fillRect(6,19,w-12,3);
+  // 셔츠
+  ctx.fillStyle='#E52521'; ctx.fillRect(3,22,w-6,12);
+  // 바지
+  ctx.fillStyle='#2471A3'; ctx.fillRect(3,32,w-6,13);
+  // 손
+  ctx.fillStyle='#F5CBA7'; ctx.fillRect(0,24,5,6);ctx.fillRect(w-5,24,5,6);
+  // 신발 (애니)
+  ctx.fillStyle='#5D4037';
+  ctx.fillRect(1+legOff,44,12,8); ctx.fillRect(w-13-legOff,44,12,8);
+  ctx.restore();
+}
+
+// ══════════════════════════════════════════════
+// 문제 오버레이 (오답 해설)
+// ══════════════════════════════════════════════
 function showWrong(qi,Q){
-  qActive=true;
-  document.getElementById('qN').textContent=`문제 ${qi+1}/5 — 오답 해설`;
-  document.getElementById('qT').textContent=Q.t;
-  document.getElementById('qS').textContent=Q.s;
-  document.getElementById('qFb').textContent='✗ 오답! 정답은 ▼  |  '+Q.e;
+  G.paused=true;
+  document.getElementById('qNum').textContent=`문제 ${qi+1}/5 — 오답 해설`;
+  document.getElementById('qText').textContent=Q.t;
+  document.getElementById('qSub').textContent=Q.s;
+  document.getElementById('qFb').textContent='✗ 오답!  정답: '+Q.c[Q.a]+'  |  '+Q.e;
   document.getElementById('qFb').style.color='#FF8C00';
-  document.getElementById('qBar').style.width='0%';
+  document.getElementById('qBar').style.width='0';
   const ch=document.getElementById('qChoices');
   ch.innerHTML='';
   Q.c.forEach((txt,i)=>{
     const btn=document.createElement('button');
     btn.className='cbtn'+(i===Q.a?' ok':'');
     btn.textContent=(i===0?'① ':i===1?'② ':'③ ')+txt;
-    btn.disabled=true;
-    ch.appendChild(btn);
+    btn.disabled=true; ch.appendChild(btn);
   });
-  document.getElementById('qOverlay').style.display='flex';
-  setTimeout(closeQ,2500);
+  document.getElementById('ui-q').classList.remove('hidden');
+  setTimeout(()=>{
+    document.getElementById('ui-q').classList.add('hidden');
+    G.paused=false;
+    if(G.lives<=0)triggerGameover();
+  },2500);
 }
 
-function closeQ(){
-  document.getElementById('qOverlay').style.display='none';
-  qActive=false;
-  cv.focus();
+// ══════════════════════════════════════════════
+// 유틸
+// ══════════════════════════════════════════════
+function rectHit(a,b){
+  return a.x<b.x+b.w&&a.x+a.w>b.x&&a.y<b.y+b.h&&a.y+a.h>b.y;
 }
-
-// ── 렌더 ─────────────────────────────────────
-function render(){
-  // 하늘
-  ct.fillStyle='#5499D8'; ct.fillRect(0,0,VW,VH);
-  drawClouds();
-
-  ct.save(); ct.translate(-camX,0);
-
-  // 지면
-  ct.fillStyle='#4a7c3f'; ct.fillRect(0,GY,MAPW,12);
-  ct.fillStyle='#8B6050'; ct.fillRect(0,GY+12,MAPW,48);
-
-  // 발판
-  for(const pl of plats){
-    if(pl.y===GY)continue;
-    ct.fillStyle=pl.col;
-    ct.fillRect(pl.x,pl.y,pl.w,pl.h);
-    ct.fillStyle='rgba(255,255,255,0.2)'; ct.fillRect(pl.x,pl.y,pl.w,4);
-    ct.fillStyle='rgba(0,0,0,0.2)';       ct.fillRect(pl.x,pl.y+pl.h-3,pl.w,3);
-  }
-
-  // 파이프
-  pipeObjs.forEach(p=>drawPipe(p));
-
-  // 문제 블럭
-  blockObjs.forEach(b=>drawBlock(b));
-
-  // 코인
-  for(const co of coinObjs){
-    if(co.got)continue;
-    const bob=Math.sin(co.ph)*3;
-    ct.fillStyle='#FFD700';
-    ct.beginPath();ct.arc(co.x,co.y+bob,co.r,0,6.28);ct.fill();
-    ct.fillStyle='#7d5a00';
-    ct.font='bold 8px monospace';ct.textAlign='center';
-    ct.fillText('$',co.x,co.y+bob+3);ct.textAlign='left';
-  }
-
-  // 파티클
-  for(const p of parts){
-    ct.globalAlpha=p.life/p.maxL;
-    ct.fillStyle=p.col; ct.fillRect(p.x,p.y,p.sz,p.sz);
-  }
-  ct.globalAlpha=1;
-
-  // 플레이어
-  drawPlayer();
-
-  ct.restore();
-
-  // 진행바
-  ct.fillStyle='rgba(0,0,0,0.3)'; ct.fillRect(0,VH-5,VW,5);
-  ct.fillStyle='#FFD700';         ct.fillRect(0,VH-5,(solved/5)*VW,5);
-}
-
-function drawClouds(){
-  const cls=[{bx:180,y:60,r:50},{bx:500,y:48,r:36},{bx:820,y:72,r:58},{bx:1150,y:52,r:42}];
-  ct.fillStyle='rgba(255,255,255,0.87)';
-  cls.forEach(cl=>{
-    const px=((cl.bx-camX*0.22)%VW+VW)%VW;
-    ct.beginPath();ct.arc(px,cl.y,cl.r,0,6.28);ct.fill();
-    ct.beginPath();ct.arc(px+cl.r*.7,cl.y+10,cl.r*.62,0,6.28);ct.fill();
-    ct.beginPath();ct.arc(px-cl.r*.6,cl.y+11,cl.r*.52,0,6.28);ct.fill();
-  });
-}
-
-function drawPipe(pp){
-  const open=solvedSet.has(pp.qi);
-  ct.fillStyle=open?'#239B56':'#1A5276';
-  ct.fillRect(pp.x+4,pp.y+22,pp.w-8,pp.h-22);
-  ct.fillStyle=open?'#2ECC71':'#2E86C1';
-  ct.fillRect(pp.x,pp.y,pp.w,24);
-  ct.fillStyle='rgba(255,255,255,0.14)';
-  ct.fillRect(pp.x+7,pp.y+2,9,pp.h-4);
-  ct.font='15px monospace'; ct.textAlign='center';
-  ct.fillText(open?'▼':'🔒',pp.x+pp.w/2,pp.y+pp.h/2+8);
-  if(!open){
-    ct.fillStyle='#FFD700';
-    ct.font='bold 10px monospace';
-    ct.fillText('Q'+(pp.qi+1)+' 풀기!',pp.x+pp.w/2,pp.y-8);
-  }
-  ct.textAlign='left';
-}
-
-function drawBlock(bl){
-  const sx=bl.shk>0?(Math.random()*6-3):0;
-  ct.fillStyle=bl.col;
-  ct.fillRect(bl.x+sx,bl.y,bl.w,bl.h);
-  ct.strokeStyle='rgba(0,0,0,0.3)';ct.lineWidth=2;
-  ct.strokeRect(bl.x+sx,bl.y,bl.w,bl.h);
-  ct.fillStyle='rgba(255,255,255,0.15)';
-  ct.fillRect(bl.x+sx,bl.y,bl.w,5);
-
-  const raw=bl.hit?(bl.col==='#FFD700'?'✓ 정답!':'✗')
-    :(bl.ci===0?'① ':bl.ci===1?'② ':'③ ')+QS[bl.qi].c[bl.ci];
-
-  ct.fillStyle='#fff';
-  ct.font='bold 10.5px Apple SD Gothic Neo, sans-serif';
-  ct.textAlign='center';
-  // 줄바꿈
-  const maxW=bl.w-10;
-  const words=raw.split('');
-  let line='',lines=[];
-  for(const ch of raw){
-    if(ct.measureText(line+ch).width>maxW){lines.push(line);line=ch;}
-    else line+=ch;
-  }
-  if(line)lines.push(line);
-  lines=lines.slice(0,3);
-  const sy=bl.y+bl.h/2-(lines.length-1)*7+2;
-  lines.forEach((l,i)=>ct.fillText(l,bl.x+sx+bl.w/2,sy+i*14));
-  ct.textAlign='left';
-}
-
-function drawPlayer(){
-  const x=Math.round(P.x-camX), y=Math.round(P.y);
-  ct.save();
-  if(P.dir===-1){ct.translate(x+P.w,y);ct.scale(-1,1);}
-  else ct.translate(x,y);
-  const w=P.w;
-  ct.fillStyle='#E52521'; ct.fillRect(2,0,w-4,9); ct.fillRect(4,7,w-8,4); // 모자
-  ct.fillStyle='#F5CBA7'; ct.fillRect(5,9,w-10,12); // 얼굴
-  ct.fillStyle='#000';    ct.fillRect(11,12,3,3);    // 눈
-  ct.fillStyle='#5D4037'; ct.fillRect(6,18,w-12,3);  // 콧수염
-  ct.fillStyle='#E52521'; ct.fillRect(3,21,w-6,12);  // 셔츠
-  ct.fillStyle='#2471A3'; ct.fillRect(3,31,w-6,14);  // 바지
-  ct.fillStyle='#F5CBA7'; ct.fillRect(0,23,5,5);ct.fillRect(w-5,23,5,5); // 손
-  ct.fillStyle='#5D4037'; ct.fillRect(1,44,12,8);ct.fillRect(w-13,44,12,8); // 신발
-  ct.restore();
-}
-
-// ── 유틸 ─────────────────────────────────────
-function hit(a,b){return a.x<b.x+b.w&&a.x+a.w>b.x&&a.y<b.y+b.h&&a.y+a.h>b.y;}
-function cHit(c,r){
+function circRectHit(c,r){
   const nx=Math.max(r.x,Math.min(c.x,r.x+r.w));
   const ny=Math.max(r.y,Math.min(c.y,r.y+r.h));
   return(c.x-nx)**2+(c.y-ny)**2<c.r**2;
 }
-function popup(text,x,y,col){
+function spawnPopup(text,x,y,col){
   const el=document.createElement('div');
-  el.className='spop';
-  el.style.cssText=`left:${Math.round(x)}px;top:${Math.round(y+46)}px;color:${col}`;
-  el.textContent=text; document.body.appendChild(el);
-  setTimeout(()=>el.remove(),900);
+  el.className='spop pxf';
+  el.style.cssText=`left:${x}px;top:${y+40}px;color:${col}`;
+  el.textContent=text;
+  document.getElementById('game-container').appendChild(el);
+  setTimeout(()=>el.remove(),920);
 }
-function spawnParts(x,y){
-  const cols=['#FFD700','#FFF','#FFD700','#FF8C00'];
-  for(let i=0;i<14;i++){
-    parts.push({x,y,vx:(Math.random()-.5)*7,vy:Math.random()*-6-1,
-      sz:3+Math.random()*4,col:cols[i%cols.length],life:32,maxL:32});
+function spawnParticles(x,y,col){
+  const cols=[col,'#fff','#FFD700','#FF8C00'];
+  for(let i=0;i<16;i++){
+    G.particles.push({x,y,vx:(Math.random()-.5)*7,vy:Math.random()*-7-1,
+      sz:3+Math.random()*4,col:cols[i%cols.length],life:28,maxL:28});
   }
 }
 function loseLife(){
-  lives--; updateHUD();
-  if(lives<=0){triggerGameover();return;}
-  // 직전 세이브포인트로 복귀
-  P.x=Math.max(80,camX+80); P.y=GY-80; P.vx=0; P.vy=0;
+  G.lives--; updateHUD();
+  if(G.lives<=0){triggerGameover();return;}
+  G.player.x=60; G.player.y=GY-80; G.player.vx=0; G.player.vy=0;
 }
 function updateHUD(){
-  document.getElementById('hScore').textContent=score.toLocaleString();
-  document.getElementById('hCoins').textContent='🪙'+coins;
-  document.getElementById('hQ').textContent=solved+'/5';
-  document.getElementById('hLives').textContent='❤️'.repeat(Math.max(0,lives));
+  document.getElementById('hScore').textContent=G.score.toLocaleString();
+  document.getElementById('hCoins').textContent='🪙'+G.coins;
+  document.getElementById('hStage').textContent=(G.stageIdx+1)+'/5';
+  document.getElementById('hLives').textContent='❤️'.repeat(Math.max(0,G.lives));
 }
 
+// ══════════════════════════════════════════════
+// 게임오버 / 클리어
+// ══════════════════════════════════════════════
 function triggerGameover(){
-  gameRunning=false;
-  document.getElementById('scrOver').style.display='flex';
-  document.getElementById('goMsg').textContent='SCORE: '+score.toLocaleString();
+  G.paused=true;
+  document.getElementById('ui-over').classList.remove('hidden');
+  document.getElementById('overMsg').textContent='SCORE: '+G.score.toLocaleString();
 }
 function triggerClear(){
-  gameRunning=false;
-  const tot=coinObjs.length, got=coinObjs.filter(c=>c.got).length;
+  G.paused=true;
+  document.getElementById('pipe-transition').classList.remove('fade-in');
+  const tot=0, got=G.coins;
   document.getElementById('clearStat').innerHTML=`
     <div class="crow"><span>이름</span><span>${pName} (${pId})</span></div>
-    <div class="crow"><span>최종점수</span><span>${score.toLocaleString()}</span></div>
-    <div class="crow"><span>코인</span><span>${got}/${tot}</span></div>
-    <div class="crow"><span>남은목숨</span><span>${lives}</span></div>`;
-  document.getElementById('scrClear').style.display='flex';
+    <div class="crow"><span>최종 점수</span><span>${G.score.toLocaleString()}</span></div>
+    <div class="crow"><span>코인</span><span>${G.coins}개</span></div>
+    <div class="crow"><span>남은 목숨</span><span>${G.lives}</span></div>`;
+  document.getElementById('ui-clear').classList.remove('hidden');
   if(fbDB){
     document.getElementById('saveMsg').textContent='점수 저장 중...';
-    fbDB.ref('quiz_scores').push({name:pName,studentId:pId,score,coins:got,lives,time:Date.now()})
-      .then(()=>document.getElementById('saveMsg').textContent='✓ 점수 저장 완료!')
+    fbDB.ref('quiz_scores').push({
+      name:pName,studentId:pId,score:G.score,coins:G.coins,lives:G.lives,time:Date.now()
+    }).then(()=>document.getElementById('saveMsg').textContent='✓ 점수 저장 완료!')
       .catch(()=>document.getElementById('saveMsg').textContent='저장 실패');
   }
 }
